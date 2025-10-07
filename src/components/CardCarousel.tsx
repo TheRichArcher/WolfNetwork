@@ -10,12 +10,18 @@ const Card = ({ title, children }: { title: string; children: React.ReactNode })
 };
 
 const CardCarousel = () => {
+  const statusText = (typeof window !== 'undefined' && localStorage.getItem('packStatus')) || 'Pack Ready';
+  const auditsSummary = (typeof window !== 'undefined' && localStorage.getItem('recentAuditLabel')) || 'Cyber Threat Scan — ';
+  const auditsResult = (typeof window !== 'undefined' && localStorage.getItem('recentAuditResult')) || 'Passed';
+  const nextRetainerAmount = (typeof window !== 'undefined' && localStorage.getItem('retainerAmount')) || '$10,000';
+  const nextRetainerDue = (typeof window !== 'undefined' && localStorage.getItem('retainerDue')) || 'Due on Oct 15, 2025';
+
   return (
     <div role="region" aria-label="At-a-Glance cards" className="flex overflow-x-auto py-4 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-4 md:overflow-visible">
       <Card title="Status">
         <div className="flex items-start justify-between gap-2">
           <div>
-            <p className="text-2xl font-bold text-cta" aria-live="polite">Pack Ready</p>
+            <p className="text-2xl font-bold text-cta" aria-live="polite">{statusText}</p>
             <p className="text-sm text-gray-300" aria-label="Status: All partners online">All partners are online.</p>
           </div>
           <div className="relative">
@@ -29,12 +35,12 @@ const CardCarousel = () => {
         </div>
       </Card>
       <Card title="Recent Audits">
-        <p>Cyber Threat Scan — <span className="text-main-text">Passed</span></p>
+        <p>{auditsSummary}<span className="text-main-text">{auditsResult}</span></p>
         <p className="text-sm text-gray-300">Completed 2 days ago.</p>
       </Card>
       <Card title="Next Retainer">
-        <p className="text-2xl font-bold">$10,000</p>
-        <p className="text-sm text-gray-300">Due on Oct 15, 2025</p>
+        <p className="text-2xl font-bold">{nextRetainerAmount}</p>
+        <p className="text-sm text-gray-300">{nextRetainerDue}</p>
       </Card>
     </div>
   );
