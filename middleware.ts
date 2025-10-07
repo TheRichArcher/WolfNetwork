@@ -1,10 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { auth } from "@/auth";
+import { withAuth } from "next-auth/middleware";
 
 const geofenceEnabled = process.env.LA_GEOFENCE_ENABLED === "true";
 const laCity = process.env.LA_GEOFENCE_CITY || "Los Angeles";
 
-export default auth((req: NextRequest) => {
+export default withAuth(function middleware(req: NextRequest) {
   const { nextUrl } = req;
 
   const isAuthRoute =
@@ -14,7 +14,7 @@ export default auth((req: NextRequest) => {
     nextUrl.pathname.startsWith("/_next");
   if (isAuthRoute) return NextResponse.next();
 
-  const isLoggedIn = !!req.auth;
+  const isLoggedIn = !!(req as any).nextauth?.token;
   if (!isLoggedIn) {
     const signInUrl = new URL("/api/auth/signin", nextUrl);
     signInUrl.searchParams.set("callbackUrl", nextUrl.href);
