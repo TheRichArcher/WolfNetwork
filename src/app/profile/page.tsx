@@ -1,11 +1,20 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Layout from '@/components/Layout';
 
 export default function ProfilePage() {
   const [deleteArmed, setDeleteArmed] = useState(false);
   const [tier, setTier] = useState(2); // 1: Silver, 2: Gold, 3: Platinum
+  const [billing, setBilling] = useState<{ amount?: string; due?: string } | null>(null);
+
+  useEffect(() => {
+    const isClient = typeof window !== 'undefined';
+    if (!isClient) return;
+    const amount = localStorage.getItem('retainerAmount') || undefined;
+    const due = localStorage.getItem('retainerDue') || undefined;
+    if (amount || due) setBilling({ amount, due });
+  }, []);
 
   const tierLabel = tier === 3 ? 'Platinum' : tier === 2 ? 'Gold' : 'Silver';
 
@@ -17,14 +26,20 @@ export default function ProfilePage() {
           <span className="px-3 py-1 rounded border border-border text-accent">{tierLabel} Tier</span>
         </header>
 
-        <section className="bg-surface rounded-lg p-4 border border-border">
-          <h2 className="text-lg font-semibold text-main-text">Billing</h2>
-          <p className="text-accent mt-1">Monthly recurring retainer</p>
-          <div className="mt-2 flex items-center gap-4">
-            <p className="text-main-text text-xl font-bold">$10,000</p>
-            <span className="text-gray-400">Next due: Oct 15, 2025</span>
-          </div>
-        </section>
+        {billing && (
+          <section className="bg-surface rounded-lg p-4 border border-border">
+            <h2 className="text-lg font-semibold text-main-text">Billing</h2>
+            <p className="text-accent mt-1">Monthly recurring retainer</p>
+            <div className="mt-2 flex items-center gap-4">
+              {billing.amount && (
+                <p className="text-main-text text-xl font-bold">{billing.amount}</p>
+              )}
+              {billing.due && (
+                <span className="text-gray-400">{billing.due}</span>
+              )}
+            </div>
+          </section>
+        )}
 
         <section className="bg-surface rounded-lg p-4 border border-border">
           <h2 className="text-lg font-semibold text-main-text">Audit Scheduler</h2>
