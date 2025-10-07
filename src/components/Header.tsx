@@ -1,7 +1,17 @@
 import Image from 'next/image';
+import { useEffect, useState } from 'react';
 
 const Header = () => {
-  const hasAlert = true; // Mock alert state
+  const [hasAlert, setHasAlert] = useState<boolean>(false);
+
+  useEffect(() => {
+    try {
+      const flag = typeof window !== 'undefined' ? localStorage.getItem('headerAlert') : null;
+      setHasAlert(flag === '1' || flag === 'true');
+    } catch {
+      setHasAlert(false);
+    }
+  }, []);
 
   return (
     <header role="banner" aria-label="Site header" className="fixed top-0 left-0 right-0 bg-background z-10 flex items-center justify-between p-4 h-20 border-b border-border">

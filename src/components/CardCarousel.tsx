@@ -10,11 +10,13 @@ const Card = ({ title, children }: { title: string; children: React.ReactNode })
 };
 
 const CardCarousel = () => {
-  const statusText = (typeof window !== 'undefined' && localStorage.getItem('packStatus')) || 'Pack Ready';
-  const auditsSummary = (typeof window !== 'undefined' && localStorage.getItem('recentAuditLabel')) || 'Cyber Threat Scan — ';
-  const auditsResult = (typeof window !== 'undefined' && localStorage.getItem('recentAuditResult')) || 'Passed';
-  const nextRetainerAmount = (typeof window !== 'undefined' && localStorage.getItem('retainerAmount')) || '$10,000';
-  const nextRetainerDue = (typeof window !== 'undefined' && localStorage.getItem('retainerDue')) || 'Due on Oct 15, 2025';
+  const isClient = typeof window !== 'undefined';
+  const statusText = (isClient && localStorage.getItem('packStatus')) || 'Pack Ready';
+  const auditsSummary = (isClient && localStorage.getItem('recentAuditLabel')) || 'Cyber Threat Scan — ';
+  const auditsResult = (isClient && localStorage.getItem('recentAuditResult')) || 'Passed';
+  const nextRetainerAmount = (isClient && localStorage.getItem('retainerAmount')) || null;
+  const nextRetainerDue = (isClient && localStorage.getItem('retainerDue')) || null;
+  const hasRetainer = Boolean(nextRetainerAmount || nextRetainerDue);
 
   return (
     <div role="region" aria-label="At-a-Glance cards" className="flex overflow-x-auto py-4 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-4 md:overflow-visible">
@@ -38,10 +40,12 @@ const CardCarousel = () => {
         <p>{auditsSummary}<span className="text-main-text">{auditsResult}</span></p>
         <p className="text-sm text-gray-300">Completed 2 days ago.</p>
       </Card>
-      <Card title="Next Retainer">
-        <p className="text-2xl font-bold">{nextRetainerAmount}</p>
-        <p className="text-sm text-gray-300">{nextRetainerDue}</p>
-      </Card>
+      {hasRetainer && (
+        <Card title="Next Retainer">
+          <p className="text-2xl font-bold">{nextRetainerAmount || '—'}</p>
+          {nextRetainerDue && <p className="text-sm text-gray-300">{nextRetainerDue}</p>}
+        </Card>
+      )}
     </div>
   );
 };
