@@ -45,7 +45,7 @@ export default function ProfilePage() {
                 checked={deleteArmed}
                 onChange={(e) => setDeleteArmed(e.target.checked)}
               />
-              <span className="text-main-text">Arm "Delete Logs Now"</span>
+              <span className="text-main-text">Arm &quot;Delete Logs Now&quot;</span>
             </label>
             <button
               className="px-4 py-2 rounded border border-red-500 text-red-400 disabled:opacity-50"

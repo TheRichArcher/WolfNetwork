@@ -21,7 +21,7 @@ export default function BiometricPage() {
       const maxAge = 60 * 60; // 1 hour
       document.cookie = `biometric_ok=1; Max-Age=${maxAge}; Path=/; SameSite=Lax`;
       router.replace(next);
-    } catch (e) {
+    } catch {
       setError('Biometric confirmation failed.');
     }
   }, [next, router]);
