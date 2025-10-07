@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none">
+  <rect width="128" height="128" rx="24" fill="#1A1A1A"/>
+  <!-- Angular wolf head silhouette -->
+  <path d="M64 18 L38 74 L54 74 L48 110 L80 70 L96 70 Z" fill="#C0C0C0"/>
+  <circle cx="78" cy="56" r="2" fill="#FFFFFF"/>
+</svg>

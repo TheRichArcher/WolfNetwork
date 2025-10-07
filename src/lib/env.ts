@@ -1,0 +1,68 @@
+export type Env = {
+  NEXT_PUBLIC_APP_ENV?: string;
+  STRIPE_SECRET_KEY?: string;
+  STRIPE_PRICE_SILVER_ID?: string;
+  STRIPE_WEBHOOK_SECRET?: string;
+  AIRTABLE_API_KEY?: string;
+  AIRTABLE_BASE_ID?: string;
+  N8N_WEBHOOK_URL?: string;
+  N8N_API_KEY?: string;
+  TWILIO_ACCOUNT_SID?: string;
+  TWILIO_AUTH_TOKEN?: string;
+  TWILIO_FROM_NUMBER?: string;
+  AUTH0_DOMAIN?: string;
+  AUTH0_CLIENT_ID?: string;
+  AUTH0_CLIENT_SECRET?: string;
+  NEXTAUTH_SECRET?: string;
+  FIREBASE_PROJECT_ID?: string;
+  FIREBASE_CLIENT_EMAIL?: string;
+  FIREBASE_PRIVATE_KEY?: string;
+  POSTHOG_API_KEY?: string;
+  MIXPANEL_TOKEN?: string;
+};
+
+const requiredInProd: Array<keyof Env> = [
+  'STRIPE_SECRET_KEY',
+  'STRIPE_PRICE_SILVER_ID',
+  'STRIPE_WEBHOOK_SECRET',
+  'AIRTABLE_API_KEY',
+  'AIRTABLE_BASE_ID',
+];
+
+export function getEnv(): Env {
+  const env: Env = {
+    NEXT_PUBLIC_APP_ENV: process.env.NEXT_PUBLIC_APP_ENV,
+    STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
+    STRIPE_PRICE_SILVER_ID: process.env.STRIPE_PRICE_SILVER_ID,
+    STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
+    AIRTABLE_API_KEY: process.env.AIRTABLE_API_KEY,
+    AIRTABLE_BASE_ID: process.env.AIRTABLE_BASE_ID,
+    N8N_WEBHOOK_URL: process.env.N8N_WEBHOOK_URL,
+    N8N_API_KEY: process.env.N8N_API_KEY,
+    TWILIO_ACCOUNT_SID: process.env.TWILIO_ACCOUNT_SID,
+    TWILIO_AUTH_TOKEN: process.env.TWILIO_AUTH_TOKEN,
+    TWILIO_FROM_NUMBER: process.env.TWILIO_FROM_NUMBER,
+    AUTH0_DOMAIN: process.env.AUTH0_DOMAIN,
+    AUTH0_CLIENT_ID: process.env.AUTH0_CLIENT_ID,
+    AUTH0_CLIENT_SECRET: process.env.AUTH0_CLIENT_SECRET,
+    NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET,
+    FIREBASE_PROJECT_ID: process.env.FIREBASE_PROJECT_ID,
+    FIREBASE_CLIENT_EMAIL: process.env.FIREBASE_CLIENT_EMAIL,
+    FIREBASE_PRIVATE_KEY: process.env.FIREBASE_PRIVATE_KEY,
+    POSTHOG_API_KEY: process.env.POSTHOG_API_KEY,
+    MIXPANEL_TOKEN: process.env.MIXPANEL_TOKEN,
+  };
+
+  const isProd = process.env.NODE_ENV === 'production';
+  if (isProd) {
+    const missing = requiredInProd.filter((key) => !env[key]);
+    if (missing.length > 0) {
+      // Throwing early helps catch misconfigurations in CI/deploys
+      throw new Error(`Missing required environment variables in production: ${missing.join(', ')}`);
+    }
+  }
+
+  return env;
+}
+
+

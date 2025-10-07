@@ -1,0 +1,14 @@
+{
+  "theme_color": "#1A1A1A",
+  "background_color": "#1A1A1A",
+  "display": "standalone",
+  "scope": "/",
+  "start_url": "/",
+  "name": "The Wolf Network",
+  "short_name": "Wolf",
+  "description": "Relief. Discretion. Precision.",
+  "icons": [
+    { "src": "/wolf.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
+

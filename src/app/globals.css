@@ -1,26 +1,36 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@theme {
+  --font-sans: "Montserrat", sans-serif;
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-background: #1A1A1A;
+  --color-accent: #C0C0C0;
+  --color-alert: #8B0000;
+  --color-main-text: #FFFFFF;
+  --color-surface: #232323; /* card surfaces - lighter than background */
+  --color-surface-2: #151515; /* darker surfaces/overlays */
+  --color-border: #3A3A3A; /* neutral border - slightly brighter */
+  --color-cta: #B22222; /* primary red for CTAs & focus */
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  @apply bg-background text-main-text;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.animate-fadeIn { animation: fadeIn 1s ease-in-out; }
+
+@keyframes redPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(139, 0, 0, 0.7); }
+  50% { box-shadow: 0 0 0 8px rgba(139, 0, 0, 0); }
+}
+
+.animate-redPulse { animation: redPulse 2s infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
 }
