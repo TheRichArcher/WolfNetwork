@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from 'react';
 import SplashScreen from '@/components/SplashScreen';
 import Layout from '@/components/Layout';
 import CardCarousel from '@/components/CardCarousel';
-import Link from 'next/link';
 
 export default function Home() {
   const [loading, setLoading] = useState(true);
@@ -25,7 +24,7 @@ export default function Home() {
 
   const startPress = () => {
     isPressingRef.current = true;
-    setHotlineStatus('Activating…');
+    setHotlineStatus('Dispatching operator…');
     if ('vibrate' in navigator) navigator.vibrate(10);
     pressTimerRef.current = window.setTimeout(async () => {
       if (!isPressingRef.current) return;
@@ -34,7 +33,7 @@ export default function Home() {
         const resp = await fetch('/api/activate-hotline', { method: 'POST' });
         const data = await resp.json();
         if (!resp.ok) throw new Error(data?.error || 'Activation failed');
-        setHotlineStatus('Connected');
+        setHotlineStatus('Connected to operator');
         if ('vibrate' in navigator) navigator.vibrate([30, 50, 30]);
       } catch {
         setHotlineStatus('Idle');
@@ -146,14 +145,14 @@ export default function Home() {
         <SplashScreen onFinished={() => setLoading(false)} />
       ) : (
         <Layout>
-          <div className="p-4 space-y-6">
-            <section className="bg-surface rounded-lg p-4 border border-border">
+          <div className="p-4 space-y-7">
+            <section className="bg-surface rounded-lg p-5 border border-border hover:border-cta/30 hover:bg-surface-2/40 transition-colors">
               <div className="flex items-start justify-between">
                 <div>
                   <h2 className="text-xl font-bold text-main-text">Crisis Hotline — Hold to Activate</h2>
                   <p className="text-accent mt-1">Your Wolf ID: <span className="font-mono">{wolfId || '—'}</span> | Status: <span className="text-cta">{packStatus}</span></p>
                 </div>
-                <Link href="/hotline" className="text-accent underline">Open</Link>
+                {/* Hidden dashboard shortcut: open dedicated hotline page when we add live session view */}
               </div>
               <div className="mt-4 flex items-center gap-4">
                 <button
@@ -168,13 +167,13 @@ export default function Home() {
                   aria-disabled={isActivating}
                   className={`w-24 h-24 rounded-full flex items-center justify-center text-main-text text-sm font-bold shadow-lg select-none ${isActivating ? 'bg-gray-700' : 'bg-alert animate-redPulse'}`}
                 >
-                  Activate
+                  {isActivating ? 'Dispatching…' : 'Activate'}
                 </button>
                 <div className="text-sm text-accent" aria-live="polite">{hotlineStatus}</div>
               </div>
             </section>
 
-            <section className="bg-surface rounded-lg p-4 border border-border">
+            <section className="bg-surface rounded-lg p-5 border border-border hover:border-cta/30 hover:bg-surface-2/40 transition-colors">
               <h2 className="text-lg font-semibold text-main-text">My Wolf Team</h2>
               <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {team.map((m) => (
@@ -183,13 +182,15 @@ export default function Home() {
                       <div className="text-sm">{m.category}</div>
                       <div className="text-lg font-semibold">{m.name.split(' ')[0]}</div>
                     </div>
-                    <div className="text-xs text-accent">{m.status === 'Active' ? '✅ Active' : m.status === 'Rotating' ? '🕐 Rotating' : '—'}</div>
+                    <div className={`text-xs ${m.status === 'Active' ? 'text-accent' : m.status === 'Rotating' ? 'text-gray-400' : 'text-gray-600'}`}>
+                      {m.status === 'Active' ? '✅ Active' : m.status === 'Rotating' ? '🕐 Rotating' : '⚫ Offline'}
+                    </div>
                   </div>
                 ))}
               </div>
             </section>
 
-            <section className="bg-surface rounded-lg p-4 border border-border">
+            <section className="bg-surface rounded-lg p-5 border border-border hover:border-cta/30 hover:bg-surface-2/40 transition-colors">
               <h2 className="text-lg font-semibold text-main-text">Last Activation</h2>
               <div className="mt-2 text-accent text-sm">
                 {lastActivation?.createdAt ? (
@@ -203,7 +204,7 @@ export default function Home() {
                       </div>
                     )}
                     {lastActivation?.operatorId && (
-                      <div>Handled by Operator {lastActivation.operatorId}</div>
+                      <div>Operator {lastActivation.operatorId}</div>
                     )}
                   </>
                 ) : (
@@ -212,13 +213,13 @@ export default function Home() {
               </div>
             </section>
 
-            <section className="bg-surface rounded-lg p-4 border border-border">
+            <section className="bg-surface rounded-lg p-5 border border-border hover:border-cta/30 hover:bg-surface-2/40 transition-colors">
               <h2 className="text-lg font-semibold text-main-text">Wolf Readiness Score</h2>
               <div className="mt-2 flex items-center justify-between">
                 <div className="flex-1 h-2 bg-surface-2 rounded mr-3">
                   <div className="h-2 bg-cta rounded" style={{ width: `${readiness.percent}%` }} />
                 </div>
-                <div className="text-accent text-sm">{readiness.percent}% Ready</div>
+                <div className="text-accent text-sm">Wolf Readiness: {readiness.percent}%</div>
               </div>
               <ul className="mt-3 space-y-1 text-sm text-accent">
                 <li>{readiness.twoFA ? '✅ 2FA Enabled' : '⚠️ 2FA Not Enabled'}</li>
@@ -234,7 +235,7 @@ export default function Home() {
             </section>
 
             {userTier === 'Platinum' && (
-              <section className="bg-surface rounded-lg p-4 border border-border">
+              <section className="bg-surface rounded-lg p-5 border border-border hover:border-cta/30 hover:bg-surface-2/40 transition-colors">
                 <h2 className="text-lg font-semibold text-main-text">Platinum Tools</h2>
                 <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3 text-accent text-sm">
                   <div className="bg-surface-2 border border-border rounded px-3 py-3">
