@@ -13,6 +13,7 @@ export type Env = {
   TWILIO_AUTH_TOKEN?: string;
   TWILIO_FROM_NUMBER?: string;
   TWILIO_OPERATOR_NUMBER?: string;
+  TWILIO_PROXY_SERVICE_SID?: string;
   AUTH0_DOMAIN?: string;
   AUTH0_CLIENT_ID?: string;
   AUTH0_CLIENT_SECRET?: string;
@@ -23,6 +24,8 @@ export type Env = {
   POSTHOG_API_KEY?: string;
   MIXPANEL_TOKEN?: string;
   PUBLIC_BASE_URL?: string;
+  ENCRYPTION_KEY?: string;
+  DATABASE_URL?: string;
 };
 
 const requiredInProd: Array<keyof Env> = [
@@ -49,6 +52,7 @@ export function getEnv(): Env {
     TWILIO_AUTH_TOKEN: process.env.TWILIO_AUTH_TOKEN,
     TWILIO_FROM_NUMBER: process.env.TWILIO_FROM_NUMBER,
     TWILIO_OPERATOR_NUMBER: process.env.TWILIO_OPERATOR_NUMBER,
+    TWILIO_PROXY_SERVICE_SID: process.env.TWILIO_PROXY_SERVICE_SID,
     AUTH0_DOMAIN: process.env.AUTH0_DOMAIN,
     AUTH0_CLIENT_ID: process.env.AUTH0_CLIENT_ID,
     AUTH0_CLIENT_SECRET: process.env.AUTH0_CLIENT_SECRET,
@@ -59,6 +63,8 @@ export function getEnv(): Env {
     POSTHOG_API_KEY: process.env.POSTHOG_API_KEY,
     MIXPANEL_TOKEN: process.env.MIXPANEL_TOKEN,
     PUBLIC_BASE_URL: process.env.PUBLIC_BASE_URL,
+    ENCRYPTION_KEY: process.env.ENCRYPTION_KEY,
+    DATABASE_URL: process.env.DATABASE_URL,
   };
 
   const isProd = process.env.NODE_ENV === 'production';

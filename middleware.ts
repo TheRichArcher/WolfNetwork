@@ -11,6 +11,7 @@ export default withAuth(function middleware(req: NextRequest) {
     nextUrl.pathname.startsWith("/api/auth") ||
     // Allow Twilio to reach our TwiML + call endpoints without auth & geofence
     nextUrl.pathname.startsWith("/api/hotline/") ||
+    nextUrl.pathname.startsWith("/api/twilio/") ||
     nextUrl.pathname === "/blocked" ||
     nextUrl.pathname === "/biometric" ||
     nextUrl.pathname.startsWith("/_next");

@@ -9,6 +9,7 @@ export default function ProfilePage() {
   const [tier, setTier] = useState(2); // 1: Silver, 2: Gold, 3: Platinum
   const [billing, setBilling] = useState<{ amount?: string; due?: string } | null>(null);
   const [checking, setChecking] = useState(false);
+  const [phone, setPhone] = useState('');
 
   useEffect(() => {
     const isClient = typeof window !== 'undefined';
@@ -16,6 +17,8 @@ export default function ProfilePage() {
     const amount = localStorage.getItem('retainerAmount') || undefined;
     const due = localStorage.getItem('retainerDue') || undefined;
     if (amount || due) setBilling({ amount, due });
+    const storedPhone = localStorage.getItem('userPhoneE164') || '';
+    if (storedPhone) setPhone(storedPhone);
   }, []);
 
   useEffect(() => {
@@ -68,6 +71,37 @@ export default function ProfilePage() {
             </div>
           </section>
         )}
+
+        <section className="bg-surface rounded-lg p-4 border border-border">
+          <h2 className="text-lg font-semibold text-main-text">Emergency Call Settings</h2>
+          <p className="text-accent mt-1">We will call this number during hotline activation.</p>
+          <div className="mt-3 flex flex-wrap gap-3 items-center">
+            <input
+              type="tel"
+              inputMode="tel"
+              placeholder="Your phone (E.164 e.g. +13105551234)"
+              className="bg-surface-2 border border-border rounded px-3 py-2 text-main-text"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              aria-label="Phone number (E.164)"
+            />
+            <button
+              className="px-4 py-2 rounded bg-cta text-background font-semibold disabled:opacity-50"
+              onClick={() => {
+                const trimmed = phone.trim();
+                const e164 = /^\+[1-9]\d{6,14}$/; // basic E.164 check
+                if (!e164.test(trimmed)) {
+                  alert('Enter a valid E.164 number, e.g. +13105551234');
+                  return;
+                }
+                localStorage.setItem('userPhoneE164', trimmed);
+                alert('Phone saved. We\'ll use this for emergency calls.');
+              }}
+            >
+              Save Number
+            </button>
+          </div>
+        </section>
 
         <section className="bg-surface rounded-lg p-4 border border-border">
           <h2 className="text-lg font-semibold text-main-text">Audit Scheduler</h2>
