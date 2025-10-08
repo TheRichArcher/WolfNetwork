@@ -26,9 +26,9 @@ const SplashScreen = ({ onFinished }: { onFinished: () => void }) => {
         <Image
           src="/wolf-vector.png"
           alt="Wolf Network logo"
-          width={256}
-          height={256}
-          className="w-40 h-40 md:w-56 md:h-56 lg:w-64 lg:h-64 drop-shadow-[0_0_24px_rgba(255,255,255,0.18)]"
+          width={480}
+          height={274}
+          className="w-56 md:w-72 lg:w-80 h-auto drop-shadow-[0_0_24px_rgba(255,255,255,0.18)]"
           priority
         />
       </div>
