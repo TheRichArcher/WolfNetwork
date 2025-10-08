@@ -94,6 +94,7 @@ export async function updateIncident(id: string, fields: Partial<IncidentRecord>
   if (typeof fields.resolvedAt === 'string') projected.resolvedAt = fields.resolvedAt;
   if (typeof fields.partnerId === 'string') projected.partnerId = fields.partnerId;
   if (typeof fields.operatorId === 'string') projected.operatorId = fields.operatorId;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await table.update([{ id, fields: projected } as unknown as any]);
 }
 

@@ -19,7 +19,7 @@ function BlockedContent() {
       }
       if ('geolocation' in navigator) {
         navigator.geolocation.getCurrentPosition(
-          (pos) => {
+          () => {
             // In a real app, reverse geocode. Here we set a generic placeholder.
             setCity('Current City');
           },
