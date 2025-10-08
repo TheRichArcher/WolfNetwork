@@ -61,8 +61,9 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json({ url: session.url, id: session.id });
-  } catch (e: any) {
-    return NextResponse.json({ error: e?.message || "Unknown error" }, { status: 500 });
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : 'Unknown error';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 

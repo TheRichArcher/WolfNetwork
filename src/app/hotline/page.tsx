@@ -56,11 +56,11 @@ const HotlinePage = () => {
       setStatus(`Connected. Operator on the line. ETA: ${data.etaMinutes} min`);
       if ('vibrate' in navigator) navigator.vibrate([20, 40, 20]);
       try { posthog.capture('hotline_activated', { eta: data.etaMinutes }); } catch {}
-    } catch (e: any) {
+    } catch (e: unknown) {
       setIsConnecting(false);
       setIsConnected(false);
       setStatus('Could not connect');
-      setError(e?.message || 'Unknown error');
+      setError(e instanceof Error ? e.message : 'Unknown error');
     }
   };
 
