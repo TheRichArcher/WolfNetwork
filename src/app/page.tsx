@@ -11,7 +11,6 @@ export default function Home() {
   const [userTier, setUserTier] = useState<string | null>(null);
   const [wolfId, setWolfId] = useState<string>('');
   const [region, setRegion] = useState<string>('');
-  const [relayLatencyMs, setRelayLatencyMs] = useState<number | null>(null);
   const [team, setTeam] = useState<Array<{ category: string; name: string; status: string }>>([]);
   const [lastActivation, setLastActivation] = useState<{ createdAt?: string; resolvedAt?: string | null; operatorId?: string | null } | null>(null);
   const [readiness, setReadiness] = useState<{ twoFA: boolean; profileVerified: boolean; hasPin: boolean; percent: number }>({ twoFA: false, profileVerified: false, hasPin: false, percent: 0 });
@@ -37,7 +36,7 @@ export default function Home() {
         if (!resp.ok) throw new Error(data?.error || 'Activation failed');
         setHotlineStatus('Connected');
         if ('vibrate' in navigator) navigator.vibrate([30, 50, 30]);
-      } catch (e) {
+      } catch {
         setHotlineStatus('Idle');
         setIsActivating(false);
       }
@@ -135,15 +134,7 @@ export default function Home() {
   useEffect(() => {
     let cancelled = false;
     const start = performance.now();
-    fetch('/api/me')
-      .then(() => {
-        if (cancelled) return;
-        const ms = Math.round(performance.now() - start);
-        setRelayLatencyMs(ms);
-      })
-      .catch(() => {
-        if (!cancelled) setRelayLatencyMs(null);
-      });
+    fetch('/api/me').catch(() => {});
     return () => {
       cancelled = true;
     };
