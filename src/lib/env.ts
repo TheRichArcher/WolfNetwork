@@ -2,6 +2,8 @@ export type Env = {
   NEXT_PUBLIC_APP_ENV?: string;
   STRIPE_SECRET_KEY?: string;
   STRIPE_PRICE_SILVER_ID?: string;
+  STRIPE_PRICE_GOLD_ID?: string;
+  STRIPE_PRICE_PLATINUM_ID?: string;
   STRIPE_WEBHOOK_SECRET?: string;
   AIRTABLE_API_KEY?: string;
   AIRTABLE_BASE_ID?: string;
@@ -10,6 +12,7 @@ export type Env = {
   TWILIO_ACCOUNT_SID?: string;
   TWILIO_AUTH_TOKEN?: string;
   TWILIO_FROM_NUMBER?: string;
+  TWILIO_OPERATOR_NUMBER?: string;
   AUTH0_DOMAIN?: string;
   AUTH0_CLIENT_ID?: string;
   AUTH0_CLIENT_SECRET?: string;
@@ -19,6 +22,7 @@ export type Env = {
   FIREBASE_PRIVATE_KEY?: string;
   POSTHOG_API_KEY?: string;
   MIXPANEL_TOKEN?: string;
+  PUBLIC_BASE_URL?: string;
 };
 
 const requiredInProd: Array<keyof Env> = [
@@ -34,6 +38,8 @@ export function getEnv(): Env {
     NEXT_PUBLIC_APP_ENV: process.env.NEXT_PUBLIC_APP_ENV,
     STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
     STRIPE_PRICE_SILVER_ID: process.env.STRIPE_PRICE_SILVER_ID,
+    STRIPE_PRICE_GOLD_ID: process.env.STRIPE_PRICE_GOLD_ID,
+    STRIPE_PRICE_PLATINUM_ID: process.env.STRIPE_PRICE_PLATINUM_ID,
     STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
     AIRTABLE_API_KEY: process.env.AIRTABLE_API_KEY,
     AIRTABLE_BASE_ID: process.env.AIRTABLE_BASE_ID,
@@ -42,6 +48,7 @@ export function getEnv(): Env {
     TWILIO_ACCOUNT_SID: process.env.TWILIO_ACCOUNT_SID,
     TWILIO_AUTH_TOKEN: process.env.TWILIO_AUTH_TOKEN,
     TWILIO_FROM_NUMBER: process.env.TWILIO_FROM_NUMBER,
+    TWILIO_OPERATOR_NUMBER: process.env.TWILIO_OPERATOR_NUMBER,
     AUTH0_DOMAIN: process.env.AUTH0_DOMAIN,
     AUTH0_CLIENT_ID: process.env.AUTH0_CLIENT_ID,
     AUTH0_CLIENT_SECRET: process.env.AUTH0_CLIENT_SECRET,
@@ -51,6 +58,7 @@ export function getEnv(): Env {
     FIREBASE_PRIVATE_KEY: process.env.FIREBASE_PRIVATE_KEY,
     POSTHOG_API_KEY: process.env.POSTHOG_API_KEY,
     MIXPANEL_TOKEN: process.env.MIXPANEL_TOKEN,
+    PUBLIC_BASE_URL: process.env.PUBLIC_BASE_URL,
   };
 
   const isProd = process.env.NODE_ENV === 'production';

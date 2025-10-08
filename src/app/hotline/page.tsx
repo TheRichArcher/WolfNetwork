@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useRef, useState } from 'react';
+import posthog from 'posthog-js';
 import Layout from '@/components/Layout';
 
 const LONG_PRESS_MS = 600;
@@ -10,6 +11,8 @@ const HotlinePage = () => {
   const [isConnecting, setIsConnecting] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [status, setStatus] = useState('Idle');
+  const [phone, setPhone] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
   const pressTimerRef = useRef<number | null>(null);
   const isPressingRef = useRef(false);
@@ -33,16 +36,32 @@ const HotlinePage = () => {
     setStatus('Idle');
   };
 
-  const activateHotline = () => {
+  const activateHotline = async () => {
     setIsActivated(true);
     setIsConnecting(true);
+    setIsConnected(false);
+    setError(null);
     setStatus('Connecting…');
-    setTimeout(() => {
+
+    try {
+      const resp = await fetch('/api/hotline/call', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to: phone }),
+      });
+      const data = await resp.json();
+      if (!resp.ok || !data?.success) throw new Error(data?.error || 'Failed to start call');
       setIsConnecting(false);
       setIsConnected(true);
-      setStatus('Connected. Operator on the line.');
+      setStatus(`Connected. Operator on the line. ETA: ${data.etaMinutes} min`);
       if ('vibrate' in navigator) navigator.vibrate([20, 40, 20]);
-    }, 5000);
+      try { posthog.capture('hotline_activated', { eta: data.etaMinutes }); } catch {}
+    } catch (e: any) {
+      setIsConnecting(false);
+      setIsConnected(false);
+      setStatus('Could not connect');
+      setError(e?.message || 'Unknown error');
+    }
   };
 
   const renderOverlay = useMemo(() => (
@@ -62,9 +81,9 @@ const HotlinePage = () => {
             <div className="mt-8">
               <h3 className="text-xl font-bold">Categorize Crisis</h3>
               <div className="flex gap-4 mt-4">
-                <div className="p-4 border border-accent rounded" role="button" tabIndex={0}>Legal</div>
-                <div className="p-4 border border-accent rounded" role="button" tabIndex={0}>Medical</div>
-                <div className="p-4 border border-accent rounded" role="button" tabIndex={0}>PR</div>
+                <div className="p-4 border border-accent rounded" role="button" tabIndex={0} onClick={() => { try { posthog.capture('hotline_category_selected', { category: 'Legal' }); } catch {} }}>Legal</div>
+                <div className="p-4 border border-accent rounded" role="button" tabIndex={0} onClick={() => { try { posthog.capture('hotline_category_selected', { category: 'Medical' }); } catch {} }}>Medical</div>
+                <div className="p-4 border border-accent rounded" role="button" tabIndex={0} onClick={() => { try { posthog.capture('hotline_category_selected', { category: 'PR' }); } catch {} }}>PR</div>
               </div>
               <p className="mt-8 text-2xl">Partner ETA: 2 min</p>
             </div>
@@ -81,6 +100,17 @@ const HotlinePage = () => {
         <p className="text-accent mt-4 max-w-md">
           Press and hold to activate. Release to cancel before activation.
         </p>
+        <div className="mt-6 flex items-center gap-2">
+          <input
+            type="tel"
+            inputMode="tel"
+            placeholder="Your phone (E.164 e.g. +13105551234)"
+            className="px-3 py-2 rounded border border-border bg-transparent"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            aria-label="Phone number to reach you"
+          />
+        </div>
         <button
           onPointerDown={startPress}
           onPointerUp={endPress}
@@ -94,6 +124,7 @@ const HotlinePage = () => {
           Activate
         </button>
         <p className="mt-4 text-sm text-accent" aria-live="polite">{status}</p>
+        {error && <p className="mt-2 text-sm text-red-400" role="alert">{error}</p>}
       </div>
       {isActivated && renderOverlay}
     </Layout>

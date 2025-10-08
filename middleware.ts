@@ -9,6 +9,8 @@ export default withAuth(function middleware(req: NextRequest) {
 
   const isAuthRoute =
     nextUrl.pathname.startsWith("/api/auth") ||
+    // Allow Twilio to reach our TwiML + call endpoints without auth & geofence
+    nextUrl.pathname.startsWith("/api/hotline/") ||
     nextUrl.pathname === "/blocked" ||
     nextUrl.pathname === "/biometric" ||
     nextUrl.pathname.startsWith("/_next");

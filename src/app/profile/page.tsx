@@ -1,12 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import posthog from 'posthog-js';
 import Layout from '@/components/Layout';
 
 export default function ProfilePage() {
   const [deleteArmed, setDeleteArmed] = useState(false);
   const [tier, setTier] = useState(2); // 1: Silver, 2: Gold, 3: Platinum
   const [billing, setBilling] = useState<{ amount?: string; due?: string } | null>(null);
+  const [checking, setChecking] = useState(false);
 
   useEffect(() => {
     const isClient = typeof window !== 'undefined';
@@ -15,6 +17,32 @@ export default function ProfilePage() {
     const due = localStorage.getItem('retainerDue') || undefined;
     if (amount || due) setBilling({ amount, due });
   }, []);
+
+  useEffect(() => {
+    // Handle return from Stripe
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const status = params.get('checkout');
+    const retTier = params.get('tier');
+    if (status === 'success' && retTier) {
+      setChecking(true);
+      fetch('/api/billing/verify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tier: retTier }) })
+        .then(() => {
+          try { posthog.capture('checkout_success', { tier: retTier }); } catch {}
+          localStorage.setItem('userTier', retTier);
+        })
+        .finally(() => setChecking(false));
+    }
+  }, []);
+
+  async function startCheckout() {
+    const selected = tier === 3 ? 'Platinum' : tier === 2 ? 'Gold' : 'Silver';
+    try { posthog.capture('checkout_start', { tier: selected }); } catch {}
+    const resp = await fetch('/api/billing/checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tier: selected }) });
+    const data = await resp.json();
+    if (data?.url) window.location.href = data.url as string;
+    else alert(data?.error || 'Unable to start checkout');
+  }
 
   const tierLabel = tier === 3 ? 'Platinum' : tier === 2 ? 'Gold' : 'Silver';
 
@@ -76,20 +104,40 @@ export default function ProfilePage() {
         </section>
 
         <section className="bg-surface rounded-lg p-4 border border-border">
-          <h2 className="text-lg font-semibold text-main-text">Tier Upgrade</h2>
-          <div className="mt-3">
-            <input
-              type="range"
-              min={1}
-              max={3}
-              step={1}
-              value={tier}
-              onChange={(e) => setTier(Number(e.target.value))}
-              className="w-full"
-              aria-label="Tier level"
-            />
-            <p className="text-accent mt-1">Current: {tierLabel}</p>
+          <h2 className="text-lg font-semibold text-main-text">Choose Your Tier</h2>
+          <div className="mt-3 flex flex-wrap gap-3" role="radiogroup" aria-label="Tier">
+            <button
+              type="button"
+              role="radio"
+              aria-checked={tier === 1}
+              className={`px-4 py-2 rounded border ${tier === 1 ? 'border-cta text-cta' : 'border-border text-main-text'}`}
+              onClick={() => setTier(1)}
+            >
+              Silver
+            </button>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={tier === 2}
+              className={`px-4 py-2 rounded border ${tier === 2 ? 'border-cta text-cta' : 'border-border text-main-text'}`}
+              onClick={() => setTier(2)}
+            >
+              Gold
+            </button>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={tier === 3}
+              className={`px-4 py-2 rounded border ${tier === 3 ? 'border-cta text-cta' : 'border-border text-main-text'}`}
+              onClick={() => setTier(3)}
+            >
+              Platinum
+            </button>
           </div>
+          <p className="text-accent mt-2">Selected: {tierLabel}</p>
+          <button className="mt-3 px-4 py-2 rounded bg-cta text-background font-semibold disabled:opacity-50" onClick={startCheckout} disabled={checking}>
+            {checking ? 'Verifying…' : 'Upgrade & Checkout'}
+          </button>
         </section>
 
         <div className="flex gap-3">
