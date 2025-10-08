@@ -8,8 +8,8 @@
   "short_name": "Wolf",
   "description": "Relief. Discretion. Precision.",
   "icons": [
-    { "src": "/wolf-logo.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" },
-    { "src": "/wolf-logo.png", "sizes": "192x192", "type": "image/png" }
+    { "src": "/wolf-vector.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/wolf-vector.png", "sizes": "192x192", "type": "image/png" }
   ]
 }
 

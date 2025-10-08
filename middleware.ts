@@ -46,7 +46,7 @@ export default withAuth(function middleware(req: NextRequest) {
 export const config = {
   matcher: [
     // Exclude the root path by requiring at least one character after '/'
-    "/((?!api/auth|_next/static|_next/image|favicon.ico|manifest.json|wolf.svg|wolf-logo.png).+)",
+    "/((?!api/auth|_next/static|_next/image|favicon.ico|manifest.json|wolf.svg|wolf-vector.png).+)",
   ],
 };
 

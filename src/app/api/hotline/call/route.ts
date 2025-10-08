@@ -15,7 +15,7 @@ async function createTwilioCall(params: {
 }) {
   const { accountSid, authToken, from, to, twimlUrl } = params;
   const authHeader = Buffer.from(`${accountSid}:${authToken}`).toString("base64");
-  const body = new URLSearchParams({ To: to, From: from, Url: twimlUrl });
+  const body = new URLSearchParams({ To: to, From: from, Url: twimlUrl, Method: "GET" });
   const resp = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Calls.json`, {
     method: "POST",
     headers: {

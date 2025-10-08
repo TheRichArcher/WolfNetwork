@@ -24,7 +24,7 @@ const SplashScreen = ({ onFinished }: { onFinished: () => void }) => {
     <div className="fixed inset-0 bg-background z-50 flex flex-col items-center justify-center animate-fadeIn">
       <div className="animate-pulse">
         <Image
-          src="/wolf-logo.png"
+          src="/wolf-vector.png"
           alt="Wolf Network logo"
           width={160}
           height={160}

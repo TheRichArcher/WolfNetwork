@@ -24,7 +24,7 @@ const Header = () => {
         )}
       </div>
       <Image
-        src="/wolf-logo.png"
+        src="/wolf-vector.png"
         alt="Wolf Network logo"
         width={32}
         height={32}
