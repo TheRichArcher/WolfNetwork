@@ -1,13 +1,56 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import SplashScreen from '@/components/SplashScreen';
 import Layout from '@/components/Layout';
 import CardCarousel from '@/components/CardCarousel';
+import Link from 'next/link';
 
 export default function Home() {
   const [loading, setLoading] = useState(true);
   const [userTier, setUserTier] = useState<string | null>(null);
+  const [wolfId, setWolfId] = useState<string>('');
+  const [region, setRegion] = useState<string>('');
+  const [relayLatencyMs, setRelayLatencyMs] = useState<number | null>(null);
+  const [team, setTeam] = useState<Array<{ category: string; name: string; status: string }>>([]);
+  const [lastActivation, setLastActivation] = useState<{ createdAt?: string; resolvedAt?: string | null; operatorId?: string | null } | null>(null);
+  const [readiness, setReadiness] = useState<{ twoFA: boolean; profileVerified: boolean; hasPin: boolean; percent: number }>({ twoFA: false, profileVerified: false, hasPin: false, percent: 0 });
+  const [packStatus, setPackStatus] = useState<string>('Pack Ready');
+
+  // Hotline long-press behavior (mirrors /hotline)
+  const LONG_PRESS_MS = 1500;
+  const [isActivating, setIsActivating] = useState(false);
+  const [hotlineStatus, setHotlineStatus] = useState('Idle');
+  const pressTimerRef = useRef<number | null>(null);
+  const isPressingRef = useRef(false);
+
+  const startPress = () => {
+    isPressingRef.current = true;
+    setHotlineStatus('Activating…');
+    if ('vibrate' in navigator) navigator.vibrate(10);
+    pressTimerRef.current = window.setTimeout(async () => {
+      if (!isPressingRef.current) return;
+      setIsActivating(true);
+      try {
+        const resp = await fetch('/api/activate-hotline', { method: 'POST' });
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data?.error || 'Activation failed');
+        setHotlineStatus('Connected');
+        if ('vibrate' in navigator) navigator.vibrate([30, 50, 30]);
+      } catch (e) {
+        setHotlineStatus('Idle');
+        setIsActivating(false);
+      }
+    }, LONG_PRESS_MS);
+  };
+  const endPress = () => {
+    isPressingRef.current = false;
+    if (pressTimerRef.current) {
+      clearTimeout(pressTimerRef.current);
+      pressTimerRef.current = null;
+    }
+    if (!isActivating) setHotlineStatus('Idle');
+  };
 
   useEffect(() => {
     try {
@@ -23,24 +66,218 @@ export default function Home() {
     }
   }, []);
 
+  // load identity and region
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/me')
+      .then(async (r) => {
+        if (!r.ok) return;
+        const j = await r.json();
+        if (!cancelled) {
+          setWolfId(j.wolfId || '');
+          setRegion(j.region || '');
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // load team
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/me/team')
+      .then(async (r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        if (!j || cancelled) return;
+        const list = j.team || [];
+        setTeam(list);
+        const anyOffline = list.some((m: { status: string }) => m.status === 'Offline');
+        setPackStatus(anyOffline ? 'Pack on Standby' : 'Pack Ready');
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // load last incident summary
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/me/last-incident')
+      .then(async (r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        if (!j || cancelled) return;
+        setLastActivation(j);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // derive readiness from client-side hints for now
+  useEffect(() => {
+    const isClient = typeof window !== 'undefined';
+    if (!isClient) return;
+    const twoFA = localStorage.getItem('has2FA') === '1';
+    const profileVerified = localStorage.getItem('profileVerified') === '1';
+    const hasPin = Boolean(localStorage.getItem('securePIN'));
+    const total = 3;
+    const done = (twoFA ? 1 : 0) + (profileVerified ? 1 : 0) + (hasPin ? 1 : 0);
+    setReadiness({ twoFA, profileVerified, hasPin, percent: Math.round((done / total) * 100) });
+    const storedPack = localStorage.getItem('packStatus');
+    if (storedPack && /standby/i.test(storedPack)) setPackStatus('Pack on Standby');
+  }, []);
+
+  // fake relay latency by pinging a lightweight endpoint (or measure /api/me)
+  useEffect(() => {
+    let cancelled = false;
+    const start = performance.now();
+    fetch('/api/me')
+      .then(() => {
+        if (cancelled) return;
+        const ms = Math.round(performance.now() - start);
+        setRelayLatencyMs(ms);
+      })
+      .catch(() => {
+        if (!cancelled) setRelayLatencyMs(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <div>
       {loading ? (
         <SplashScreen onFinished={() => setLoading(false)} />
       ) : (
         <Layout>
-          <div className="p-4">
-            <h2 className="text-2xl font-bold">At-a-Glance</h2>
-            <div className="h-0.5 w-12 bg-cta mb-4" aria-hidden="true" />
-            <CardCarousel />
-            <div className="mt-8">
-              <h2 className="text-2xl font-bold mb-4">Personalized Tips</h2>
-              <p className="text-cta motion-safe:animate-pulse" aria-describedby="tip-detail">{userTier ? 'Custom Tip' : 'Pro Tip: Enable 2FA'}</p>
-              <span id="tip-detail" className="sr-only">Subtle pulse indicates actionable tip</span>
-            </div>
+          <div className="p-4 space-y-6">
+            <section className="bg-surface rounded-lg p-4 border border-border">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h2 className="text-xl font-bold text-main-text">Crisis Hotline — Hold to Activate</h2>
+                  <p className="text-accent mt-1">Your Wolf ID: <span className="font-mono">{wolfId || '—'}</span> | Status: <span className="text-cta">{packStatus}</span></p>
+                </div>
+                <Link href="/hotline" className="text-accent underline">Open</Link>
+              </div>
+              <div className="mt-4 flex items-center gap-4">
+                <button
+                  onPointerDown={startPress}
+                  onPointerUp={endPress}
+                  onPointerLeave={endPress}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') startPress(); }}
+                  onKeyUp={endPress}
+                  aria-pressed={isActivating}
+                  aria-label="Activate hotline"
+                  disabled={isActivating}
+                  aria-disabled={isActivating}
+                  className={`w-24 h-24 rounded-full flex items-center justify-center text-main-text text-sm font-bold shadow-lg select-none ${isActivating ? 'bg-gray-700' : 'bg-alert animate-redPulse'}`}
+                >
+                  Activate
+                </button>
+                <div className="text-sm text-accent" aria-live="polite">{hotlineStatus}</div>
+              </div>
+            </section>
+
+            <section className="bg-surface rounded-lg p-4 border border-border">
+              <h2 className="text-lg font-semibold text-main-text">My Wolf Team</h2>
+              <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {team.map((m) => (
+                  <div key={`${m.category}-${m.name}`} className="flex items-center justify-between bg-surface-2 border border-border rounded px-3 py-2">
+                    <div className="text-main-text">
+                      <div className="text-sm">{m.category}</div>
+                      <div className="text-lg font-semibold">{m.name.split(' ')[0]}</div>
+                    </div>
+                    <div className="text-xs text-accent">{m.status === 'Active' ? '✅ Active' : m.status === 'Rotating' ? '🕐 Rotating' : '—'}</div>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <section className="bg-surface rounded-lg p-4 border border-border">
+              <h2 className="text-lg font-semibold text-main-text">Last Activation</h2>
+              <div className="mt-2 text-accent text-sm">
+                {lastActivation?.createdAt ? (
+                  <>
+                    <div>
+                      Last Activation: {formatDaysAgo(lastActivation.createdAt)}
+                    </div>
+                    {lastActivation?.resolvedAt && (
+                      <div>
+                        Resolved in {formatMinutesDiff(lastActivation.createdAt!, lastActivation.resolvedAt)}
+                      </div>
+                    )}
+                    {lastActivation?.operatorId && (
+                      <div>Handled by Operator {lastActivation.operatorId}</div>
+                    )}
+                  </>
+                ) : (
+                  <div>No prior activations.</div>
+                )}
+              </div>
+            </section>
+
+            <section className="bg-surface rounded-lg p-4 border border-border">
+              <h2 className="text-lg font-semibold text-main-text">Wolf Readiness Score</h2>
+              <div className="mt-2 flex items-center justify-between">
+                <div className="flex-1 h-2 bg-surface-2 rounded mr-3">
+                  <div className="h-2 bg-cta rounded" style={{ width: `${readiness.percent}%` }} />
+                </div>
+                <div className="text-accent text-sm">{readiness.percent}% Ready</div>
+              </div>
+              <ul className="mt-3 space-y-1 text-sm text-accent">
+                <li>{readiness.twoFA ? '✅ 2FA Enabled' : '⚠️ 2FA Not Enabled'}</li>
+                <li>{readiness.profileVerified ? '✅ Profile Verified' : '⚠️ Profile Not Verified'}</li>
+                <li>{readiness.hasPin ? '✅ Secure PIN Set' : '⚠️ Secure PIN Missing'}</li>
+              </ul>
+            </section>
+
+            <section>
+              <h2 className="text-2xl font-bold">At-a-Glance</h2>
+              <div className="h-0.5 w-12 bg-cta mb-4" aria-hidden="true" />
+              <CardCarousel />
+            </section>
+
+            {userTier === 'Platinum' && (
+              <section className="bg-surface rounded-lg p-4 border border-border">
+                <h2 className="text-lg font-semibold text-main-text">Platinum Tools</h2>
+                <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3 text-accent text-sm">
+                  <div className="bg-surface-2 border border-border rounded px-3 py-3">
+                    <div className="font-semibold text-main-text">Secure Vault Access</div>
+                    <div>Incident and NDA archive</div>
+                  </div>
+                  <div className="bg-surface-2 border border-border rounded px-3 py-3">
+                    <div className="font-semibold text-main-text">Alias Number Pool</div>
+                    <div>Rotating relay numbers</div>
+                  </div>
+                  <div className="bg-surface-2 border border-border rounded px-3 py-3">
+                    <div className="font-semibold text-main-text">Direct Operator Channel</div>
+                    <div>Encrypted chat link</div>
+                  </div>
+                </div>
+              </section>
+            )}
           </div>
         </Layout>
       )}
     </div>
   );
+}
+
+function formatDaysAgo(iso: string): string {
+  const then = new Date(iso).getTime();
+  const now = Date.now();
+  const days = Math.max(0, Math.floor((now - then) / (1000 * 60 * 60 * 24)));
+  return `${days} day${days === 1 ? '' : 's'} ago`;
+}
+
+function formatMinutesDiff(startIso: string, endIso: string): string {
+  const start = new Date(startIso).getTime();
+  const end = new Date(endIso).getTime();
+  const mins = Math.max(0, Math.round((end - start) / (1000 * 60)));
+  return `${mins} minute${mins === 1 ? '' : 's'}`;
 }
