@@ -88,7 +88,13 @@ export async function createIncident(incident: IncidentRecord): Promise<Incident
 export async function updateIncident(id: string, fields: Partial<IncidentRecord>): Promise<void> {
   const base = getBase();
   const table = base('incidents');
-  await table.update([{ id, fields: fields as any }]);
+  // Airtable typings are lax; project only known fields to avoid any
+  const projected: Record<string, string> = {};
+  if (typeof fields.status === 'string') projected.status = fields.status;
+  if (typeof fields.resolvedAt === 'string') projected.resolvedAt = fields.resolvedAt;
+  if (typeof fields.partnerId === 'string') projected.partnerId = fields.partnerId;
+  if (typeof fields.operatorId === 'string') projected.operatorId = fields.operatorId;
+  await table.update([{ id, fields: projected } as unknown as any]);
 }
 
 

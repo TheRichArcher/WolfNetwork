@@ -4,7 +4,7 @@ import { findUserBySessionEmail } from '@/lib/db';
 
 export async function GET(req: NextRequest) {
   const token = await getToken({ req });
-  const email = (token as any)?.email as string | undefined;
+  const email = typeof token?.email === 'string' ? token.email : undefined;
   if (!email) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const user = await findUserBySessionEmail(email);
   if (!user) return NextResponse.json({ error: 'Not found' }, { status: 404 });

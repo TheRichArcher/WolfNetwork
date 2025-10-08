@@ -9,7 +9,7 @@ import { getEnv } from '@/lib/env';
 export async function POST(req: NextRequest) {
   try {
     const token = await getToken({ req });
-    const email = (token as any)?.email as string | undefined;
+    const email = typeof token?.email === 'string' ? token.email : undefined;
     if (!email) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     // Basic rate limit per user
