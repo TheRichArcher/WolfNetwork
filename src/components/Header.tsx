@@ -26,9 +26,9 @@ const Header = () => {
       <Image
         src="/wolf-vector.png"
         alt="Wolf Network logo"
-        width={80}
-        height={46}
-        className="rounded h-auto w-20"
+        width={120}
+        height={69}
+        className="rounded h-auto w-28 md:w-32"
         priority
       />
     </header>
