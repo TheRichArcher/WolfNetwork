@@ -3,8 +3,9 @@ import withPWAInit from "@ducanh2912/next-pwa";
 
 const withPWA = withPWAInit({
   dest: "public",
-  disable: process.env.NODE_ENV === "development",
-  register: true,
+  // Temporarily disable PWA due to SW runtime error in production
+  disable: true,
+  register: false,
 });
 
 const nextConfig: NextConfig = {
