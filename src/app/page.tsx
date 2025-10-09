@@ -258,7 +258,7 @@ export default function Home() {
                 <h2 className="text-lg font-semibold text-main-text">Active Session</h2>
                 <div className="mt-2 text-accent text-sm flex items-center justify-between">
                   <div>
-                    <div>Operator: <span className="text-main-text">{activeSession.operator || 'Operator'}</span></ndiv>
+                    <div>Operator: <span className="text-main-text">{activeSession.operator || 'Operator'}</span></div>
                     <div className="mt-1">Started: {activeSession.startedAt ? new Date(activeSession.startedAt).toLocaleTimeString() : '—'}</div>
                   </div>
                   <button
