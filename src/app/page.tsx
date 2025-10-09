@@ -118,18 +118,24 @@ export default function Home() {
     };
   }, []);
 
-  // derive readiness from client-side hints for now
+  // load readiness from server
   useEffect(() => {
-    const isClient = typeof window !== 'undefined';
-    if (!isClient) return;
-    const twoFA = localStorage.getItem('has2FA') === '1';
-    const profileVerified = localStorage.getItem('profileVerified') === '1';
-    const hasPin = Boolean(localStorage.getItem('securePIN'));
-    const total = 3;
-    const done = (twoFA ? 1 : 0) + (profileVerified ? 1 : 0) + (hasPin ? 1 : 0);
-    setReadiness({ twoFA, profileVerified, hasPin, percent: Math.round((done / total) * 100) });
-    const storedPack = localStorage.getItem('packStatus');
-    if (storedPack && /standby/i.test(storedPack)) setPackStatus('Pack on Standby');
+    let cancelled = false;
+    fetch('/api/me/security-status')
+      .then(async (r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        if (!j || cancelled) return;
+        setReadiness({
+          twoFA: Boolean(j.twoFA),
+          profileVerified: Boolean(j.profileVerified),
+          hasPin: Boolean(j.securePIN),
+          percent: typeof j.percent === 'number' ? j.percent : 0,
+        });
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // fake relay latency by pinging a lightweight endpoint (or measure /api/me)

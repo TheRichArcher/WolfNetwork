@@ -94,8 +94,17 @@ export async function updateIncident(id: string, fields: Partial<IncidentRecord>
   if (typeof fields.resolvedAt === 'string') projected.resolvedAt = fields.resolvedAt;
   if (typeof fields.partnerId === 'string') projected.partnerId = fields.partnerId;
   if (typeof fields.operatorId === 'string') projected.operatorId = fields.operatorId;
+  // Resolve whether the provided id is an Airtable Record ID (rec...) or our custom UUID in the {id} field
+  let recordId = id;
+  if (!/^rec[a-zA-Z0-9]{14}$/i.test(id)) {
+    const matches = await table
+      .select({ filterByFormula: `{id} = '${id}'`, maxRecords: 1 })
+      .firstPage();
+    if (matches.length === 0) throw new Error(`Incident not found for custom id ${id}`);
+    recordId = matches[0].id;
+  }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await table.update([{ id, fields: projected } as unknown as any]);
+  await table.update([{ id: recordId, fields: projected } as unknown as any]);
 }
 
 export async function findLastResolvedIncidentForWolfId(wolfId: string): Promise<IncidentRecord | null> {
@@ -122,6 +131,30 @@ export async function findLastResolvedIncidentForWolfId(wolfId: string): Promise
     resolvedAt: (r.get('resolvedAt') as string) || undefined,
     tier: (r.get('tier') as IncidentRecord['tier']) || undefined,
     region: (r.get('region') as IncidentRecord['region']) || undefined,
+  };
+}
+
+
+// Security flags (server-derived readiness). These fields are optional in Airtable users table.
+export async function getUserSecurityFlagsByEmail(email: string): Promise<{ twoFA: boolean; profileVerified: boolean; hasPin: boolean }> {
+  const base = getBase();
+  const table = base('users');
+  const records = await table.select({ filterByFormula: `{email} = '${email}'`, maxRecords: 1 }).firstPage();
+  if (records.length === 0) {
+    return { twoFA: false, profileVerified: false, hasPin: false };
+  }
+  const r = records[0];
+  const val = (k: string) => {
+    const v = r.get(k);
+    if (typeof v === 'boolean') return v;
+    if (typeof v === 'number') return v !== 0;
+    if (typeof v === 'string') return v.trim() === '1' || /true|yes|y/i.test(v);
+    return false;
+  };
+  return {
+    twoFA: val('has2FA') || val('twoFA') || false,
+    profileVerified: val('profileVerified') || false,
+    hasPin: val('securePIN') || val('hasPin') || false,
   };
 }
 
