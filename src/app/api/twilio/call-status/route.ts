@@ -56,9 +56,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
-    const updates = mapToIncidentUpdate(callStatus, params);
+    const updates = mapToIncidentUpdate(callStatus, params) as Partial<{
+      status: 'initiated' | 'active' | 'resolved';
+      activatedAt: string;
+      resolvedAt: string;
+      statusReason: string;
+      twilioStatus: string;
+      durationSeconds: number;
+    }>;
     if (Object.keys(updates).length > 0) {
-      await updateIncident(incident.id, updates as any);
+      await updateIncident(incident.id, updates);
     }
     logEvent({ event: 'call_status', route: '/api/twilio/call-status', incidentId: incident.id, wolfId: incident.wolfId, callSid, callStatus });
     return NextResponse.json({ ok: true });

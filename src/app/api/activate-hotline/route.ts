@@ -5,7 +5,6 @@ import { logEvent } from '@/lib/log';
 import { POST as Activate } from '@/app/api/hotline/activate/route';
 
 export async function POST(req: NextRequest) {
-  const url = req.nextUrl;
   const authBypass = process.env.AUTH_DEV_BYPASS === 'true';
   try {
     const token = await getToken({ req });

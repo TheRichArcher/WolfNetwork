@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
     active: incident.status === 'active' || incident.status === 'initiated',
     status: incident.status,
     sessionSid: incident.sessionSid,
-    callSid: (incident as any).callSid || undefined,
+    callSid: (incident as unknown as { callSid?: string }).callSid || undefined,
     incidentId: incident.id,
     operator,
     startedAt,
