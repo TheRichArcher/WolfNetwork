@@ -13,6 +13,8 @@ export default withAuth(function middleware(req: NextRequest) {
     nextUrl.pathname.startsWith("/api/auth") ||
     // Allow Twilio to reach our TwiML + call endpoints without auth & geofence
     nextUrl.pathname.startsWith("/api/hotline/") ||
+    // Legacy activate-hotline route should be allowed (compat)
+    nextUrl.pathname === "/api/activate-hotline" ||
     nextUrl.pathname.startsWith("/api/twilio/") ||
     nextUrl.pathname === "/blocked" ||
     nextUrl.pathname === "/biometric" ||
