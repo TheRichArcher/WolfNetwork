@@ -19,11 +19,13 @@ export default function Home() {
   const LONG_PRESS_MS = 1500;
   const [isActivating, setIsActivating] = useState(false);
   const [hotlineStatus, setHotlineStatus] = useState('Idle');
+  const [hotlineError, setHotlineError] = useState<string | null>(null);
   const pressTimerRef = useRef<number | null>(null);
   const isPressingRef = useRef(false);
 
   const startPress = () => {
     isPressingRef.current = true;
+    setHotlineError(null);
     setHotlineStatus('Dispatching operator…');
     if ('vibrate' in navigator) navigator.vibrate(10);
     pressTimerRef.current = window.setTimeout(async () => {
@@ -36,7 +38,8 @@ export default function Home() {
         setHotlineStatus('Connected to operator');
         if ('vibrate' in navigator) navigator.vibrate([30, 50, 30]);
       } catch {
-        setHotlineStatus('Idle');
+        setHotlineStatus('Failed');
+        setHotlineError('Something went wrong. Try again or contact support.');
         setIsActivating(false);
       }
     }, LONG_PRESS_MS);
@@ -169,8 +172,11 @@ export default function Home() {
                 >
                   {isActivating ? 'Dispatching…' : 'Activate'}
                 </button>
-                <div className="text-sm text-accent" aria-live="polite">{hotlineStatus}</div>
+                <div className={`text-sm ${hotlineStatus === 'Failed' ? 'text-red-400' : 'text-accent'}`} aria-live="polite">{hotlineStatus}</div>
               </div>
+              {hotlineError && (
+                <div className="mt-2 text-xs text-red-400" role="alert" aria-live="polite">{hotlineError}</div>
+              )}
             </section>
 
             <section className="bg-surface rounded-lg p-5 border border-border hover:border-cta/30 hover:bg-surface-2/40 transition-colors">
