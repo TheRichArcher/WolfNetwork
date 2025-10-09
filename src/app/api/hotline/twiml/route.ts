@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { getEnv } from "@/lib/env";
+import { getOperatorNumber } from "@/lib/operator";
 
 export async function GET() {
   const env = getEnv();
-  const operator = env.TWILIO_OPERATOR_NUMBER;
+  const operator = getOperatorNumber();
 
   if (!operator) {
     const xml = `<?xml version="1.0" encoding="UTF-8"?><Response><Say voice="Polly.Joanna">Wolf hotline cannot connect. Operator number missing.</Say></Response>`;
@@ -21,7 +22,7 @@ export async function GET() {
 
 export async function POST() {
   const env = getEnv();
-  const operator = env.TWILIO_OPERATOR_NUMBER;
+  const operator = getOperatorNumber();
 
   if (!operator) {
     const xml = `<?xml version="1.0" encoding="UTF-8"?><Response><Say voice="Polly.Joanna">Wolf hotline cannot connect. Operator number missing.</Say></Response>`;

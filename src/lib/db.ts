@@ -23,6 +23,12 @@ export type IncidentRecord = {
   resolvedAt?: string;
   tier?: 'Silver' | 'Gold' | 'Platinum';
   region?: string;
+  // Direct-call fields (optional)
+  callSid?: string;
+  activatedAt?: string;
+  statusReason?: string;
+  twilioStatus?: string;
+  durationSeconds?: number;
 };
 
 function getBase() {
@@ -89,11 +95,17 @@ export async function updateIncident(id: string, fields: Partial<IncidentRecord>
   const base = getBase();
   const table = base('incidents');
   // Airtable typings are lax; project only known fields to avoid any
-  const projected: Record<string, string> = {};
+  const projected: Record<string, unknown> = {};
   if (typeof fields.status === 'string') projected.status = fields.status;
   if (typeof fields.resolvedAt === 'string') projected.resolvedAt = fields.resolvedAt;
   if (typeof fields.partnerId === 'string') projected.partnerId = fields.partnerId;
   if (typeof fields.operatorId === 'string') projected.operatorId = fields.operatorId;
+  if (typeof fields.sessionSid === 'string') projected.sessionSid = fields.sessionSid;
+  if (typeof fields.callSid === 'string') projected.callSid = fields.callSid;
+  if (typeof fields.activatedAt === 'string') projected.activatedAt = fields.activatedAt;
+  if (typeof fields.statusReason === 'string') projected.statusReason = fields.statusReason;
+  if (typeof fields.twilioStatus === 'string') projected.twilioStatus = fields.twilioStatus;
+  if (typeof fields.durationSeconds === 'number') projected.durationSeconds = fields.durationSeconds;
   // Resolve whether the provided id is an Airtable Record ID (rec...) or our custom UUID in the {id} field
   let recordId = id;
   if (!/^rec[a-zA-Z0-9]{14}$/i.test(id)) {
@@ -105,6 +117,68 @@ export async function updateIncident(id: string, fields: Partial<IncidentRecord>
   }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await table.update([{ id: recordId, fields: projected } as unknown as any]);
+}
+
+export async function findIncidentByCallSid(callSid: string): Promise<IncidentRecord | null> {
+  const base = getBase();
+  const table = base('incidents');
+  const records = await table
+    .select({ filterByFormula: `{callSid} = '${callSid}'`, maxRecords: 1 })
+    .firstPage();
+  if (records.length === 0) return null;
+  const r = records[0];
+  return {
+    id: (r.get('id') as string) || '',
+    wolfId: (r.get('wolfId') as string) || '',
+    sessionSid: (r.get('sessionSid') as string) || '',
+    status: (r.get('status') as IncidentRecord['status']) || 'initiated',
+    type: (r.get('type') as IncidentRecord['type']) || 'unknown',
+    partnerId: (r.get('partnerId') as string) || undefined,
+    operatorId: (r.get('operatorId') as string) || undefined,
+    createdAt: (r.get('createdAt') as string) || '',
+    resolvedAt: (r.get('resolvedAt') as string) || undefined,
+    tier: (r.get('tier') as IncidentRecord['tier']) || undefined,
+    region: (r.get('region') as IncidentRecord['region']) || undefined,
+    callSid: (r.get('callSid') as string) || undefined,
+    activatedAt: (r.get('activatedAt') as string) || undefined,
+    statusReason: (r.get('statusReason') as string) || undefined,
+    twilioStatus: (r.get('twilioStatus') as string) || undefined,
+    durationSeconds: (r.get('durationSeconds') as number) || undefined,
+  };
+}
+
+export async function findIncidentById(customIdOrRecId: string): Promise<IncidentRecord | null> {
+  const base = getBase();
+  const table = base('incidents');
+  let record = null;
+  if (/^rec[a-zA-Z0-9]{14}$/i.test(customIdOrRecId)) {
+    record = await table.find(customIdOrRecId).catch(() => null);
+  } else {
+    const records = await table
+      .select({ filterByFormula: `{id} = '${customIdOrRecId}'`, maxRecords: 1 })
+      .firstPage();
+    record = records[0] || null;
+  }
+  if (!record) return null;
+  const r = record;
+  return {
+    id: (r.get('id') as string) || '',
+    wolfId: (r.get('wolfId') as string) || '',
+    sessionSid: (r.get('sessionSid') as string) || '',
+    status: (r.get('status') as IncidentRecord['status']) || 'initiated',
+    type: (r.get('type') as IncidentRecord['type']) || 'unknown',
+    partnerId: (r.get('partnerId') as string) || undefined,
+    operatorId: (r.get('operatorId') as string) || undefined,
+    createdAt: (r.get('createdAt') as string) || '',
+    resolvedAt: (r.get('resolvedAt') as string) || undefined,
+    tier: (r.get('tier') as IncidentRecord['tier']) || undefined,
+    region: (r.get('region') as IncidentRecord['region']) || undefined,
+    callSid: (r.get('callSid') as string) || undefined,
+    activatedAt: (r.get('activatedAt') as string) || undefined,
+    statusReason: (r.get('statusReason') as string) || undefined,
+    twilioStatus: (r.get('twilioStatus') as string) || undefined,
+    durationSeconds: (r.get('durationSeconds') as number) || undefined,
+  };
 }
 
 export async function findLastResolvedIncidentForWolfId(wolfId: string): Promise<IncidentRecord | null> {
