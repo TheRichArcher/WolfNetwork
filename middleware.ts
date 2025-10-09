@@ -6,7 +6,8 @@ const laCity = process.env.LA_GEOFENCE_CITY || "Los Angeles";
 
 export default withAuth(function middleware(req: NextRequest) {
   const { nextUrl } = req;
-  const authBypass = process.env.AUTH_DEV_BYPASS === "true" && process.env.NODE_ENV !== "production";
+  // Read at runtime; allow in production when explicitly enabled
+  const authBypass = process.env.AUTH_DEV_BYPASS === "true";
 
   const isAuthRoute =
     nextUrl.pathname.startsWith("/api/auth") ||

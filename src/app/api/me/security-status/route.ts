@@ -6,8 +6,8 @@ export async function GET(req: NextRequest) {
   const token = await getToken({ req });
   const email = typeof token?.email === 'string' ? token.email : undefined;
 
-  // Dev bypass to enable testing without auth
-  if (!email && process.env.AUTH_DEV_BYPASS === 'true' && process.env.NODE_ENV !== 'production') {
+  // Bypass to enable testing without auth when explicitly enabled
+  if (!email && process.env.AUTH_DEV_BYPASS === 'true') {
     const percent = Math.round((2 / 3) * 100);
     return NextResponse.json({ twoFA: true, profileVerified: true, securePIN: false, percent });
   }
