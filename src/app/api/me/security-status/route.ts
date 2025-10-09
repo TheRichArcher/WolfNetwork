@@ -5,6 +5,13 @@ import { getUserSecurityFlagsByEmail } from '@/lib/db';
 export async function GET(req: NextRequest) {
   const token = await getToken({ req });
   const email = typeof token?.email === 'string' ? token.email : undefined;
+
+  // Dev bypass to enable testing without auth
+  if (!email && process.env.AUTH_DEV_BYPASS === 'true' && process.env.NODE_ENV !== 'production') {
+    const percent = Math.round((2 / 3) * 100);
+    return NextResponse.json({ twoFA: true, profileVerified: true, securePIN: false, percent });
+  }
+
   if (!email) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const flags = await getUserSecurityFlagsByEmail(email);

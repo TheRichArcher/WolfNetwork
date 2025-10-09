@@ -6,6 +6,7 @@ const laCity = process.env.LA_GEOFENCE_CITY || "Los Angeles";
 
 export default withAuth(function middleware(req: NextRequest) {
   const { nextUrl } = req;
+  const authBypass = process.env.AUTH_DEV_BYPASS === "true" && process.env.NODE_ENV !== "production";
 
   const isAuthRoute =
     nextUrl.pathname.startsWith("/api/auth") ||
@@ -16,6 +17,22 @@ export default withAuth(function middleware(req: NextRequest) {
     nextUrl.pathname === "/biometric" ||
     nextUrl.pathname.startsWith("/_next");
   if (isAuthRoute) return NextResponse.next();
+
+  // In development, optionally bypass auth for select endpoints/pages to unblock testing
+  if (authBypass) {
+    const devBypassPaths = [
+      "/api/me",
+      "/api/me/security-status",
+      "/api/me/last-incident",
+      "/api/me/team",
+      "/",
+      "/hotline",
+      "/profile",
+    ];
+    if (devBypassPaths.some((p) => nextUrl.pathname === p)) {
+      return NextResponse.next();
+    }
+  }
 
   const isLoggedIn = !!(req as any).nextauth?.token;
   if (!isLoggedIn) {
