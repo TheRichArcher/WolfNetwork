@@ -1,5 +1,13 @@
 'use client';
 
+import React from 'react';
+
+declare global {
+  interface Window {
+    __wolfLog?: (e: unknown) => void;
+  }
+}
+
 type Session = {
   active?: boolean;
   callSid?: string;
@@ -88,7 +96,7 @@ export default function HotlineButton(props: Props) {
         const t = Date.now() + 8000;
         setTerminalResetAt(t);
         const timer = window.setTimeout(() => setTerminalResetAt(null), 8000);
-        try { (window as any).__wolfLog && (window as any).__wolfLog({ event: 'hotline_button_reset_triggered', status, duration: session?.durationSeconds }); } catch {}
+        try { window.__wolfLog?.({ event: 'hotline_button_reset_triggered', status, duration: session?.durationSeconds }); } catch {}
         return () => window.clearTimeout(timer);
       }
     } else if (status && !isInProgress(status)) {
@@ -96,7 +104,7 @@ export default function HotlineButton(props: Props) {
       if (terminalResetAt) setTerminalResetAt(null);
     }
     return;
-  }, [session?.twilioStatus]);
+  }, [session?.twilioStatus, session?.durationSeconds, terminalResetAt]);
 
   const label = computeLabel(session, isPressing, isActivating, terminalResetAt);
   const className = computeClassNames(session, isPressing, isActivating, terminalResetAt);

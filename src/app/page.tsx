@@ -250,7 +250,7 @@ export default function Home() {
               ) : (
                 <div className="mt-4 flex items-center gap-4">
                   <HotlineButton
-                    session={activeSession as any}
+                    session={activeSession as { active?: boolean; callSid?: string; twilioStatus?: string; durationSeconds?: number } | null}
                     isPressing={isPressing}
                     isActivating={isActivating}
                     onPointerDown={startPress}
