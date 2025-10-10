@@ -9,7 +9,7 @@ export async function createDirectCall(toE164: string, twimlUrl: string): Promis
   const fromNumber = env.TWILIO_FROM_NUMBER || '';
   if (!accountSid || !authToken || !fromNumber) throw new Error('Twilio env vars missing');
   const authHeader = Buffer.from(`${accountSid}:${authToken}`).toString('base64');
-  const body = new URLSearchParams({ To: toE164, From: fromNumber, Url: twimlUrl, Method: 'GET' });
+  const body = new URLSearchParams({ To: toE164, From: fromNumber, Url: twimlUrl, Method: 'POST' });
   const resp = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Calls.json`, {
     method: 'POST',
     headers: { Authorization: `Basic ${authHeader}`, 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -39,5 +39,6 @@ export async function endCall(callSid: string): Promise<void> {
     throw new Error(`Twilio end call failed (${resp.status}): ${text}`);
   }
 }
+
 
 

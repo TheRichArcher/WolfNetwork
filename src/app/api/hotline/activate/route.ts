@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
 
     const env = getEnv();
     const base = env.PUBLIC_BASE_URL || `${req.nextUrl.protocol}//${req.nextUrl.host}`;
-    const twimlUrl = `${base}/api/hotline/twiml`;
+    const twimlUrl = `${base}/api/twilio/voice`;
 
     let incidentId = crypto.randomUUID();
     let persisted = true;
