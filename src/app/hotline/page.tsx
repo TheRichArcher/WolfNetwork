@@ -12,12 +12,14 @@ const HotlinePage = () => {
   const [wolfId, setWolfId] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const endMessageTimerRef = useRef<number | null>(null);
+  const [isPressing, setIsPressing] = useState(false);
 
   const pressTimerRef = useRef<number | null>(null);
   const isPressingRef = useRef(false);
 
   const startPress = () => {
     isPressingRef.current = true;
+    setIsPressing(true);
     setStatus('Activating…');
     if ('vibrate' in navigator) navigator.vibrate(10);
     pressTimerRef.current = window.setTimeout(() => {
@@ -28,6 +30,7 @@ const HotlinePage = () => {
 
   const endPress = () => {
     isPressingRef.current = false;
+    setIsPressing(false);
     if (pressTimerRef.current) {
       clearTimeout(pressTimerRef.current);
       pressTimerRef.current = null;
@@ -131,13 +134,15 @@ const HotlinePage = () => {
           onPointerLeave={endPress}
           onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') startPress(); }}
           onKeyUp={endPress}
-          aria-pressed={isActivated}
+          aria-pressed={isPressing || isActivated}
           aria-label="Activate hotline"
           disabled={isActivated}
           aria-disabled={isActivated}
-          className={`mt-8 w-48 h-48 rounded-full flex items-center justify-center text-main-text text-2xl font-bold shadow-lg select-none ${isActivated ? 'bg-gray-700' : 'bg-alert animate-redPulse'}`}
+          className={`mt-8 w-48 h-48 rounded-full flex items-center justify-center text-main-text text-2xl font-bold shadow-lg select-none
+            ${isActivated ? 'bg-green-600' : 'bg-alert animate-redPulse'}
+            ${isPressing && !isActivated ? 'ring-2 ring-cta scale-95' : ''}`}
         >
-          Activate
+          {isActivated ? 'Connected' : isPressing ? 'Hold…' : 'Activate'}
         </button>
         <p className="mt-4 text-sm text-accent" aria-live="polite">{status}</p>
         {error && <p className="mt-2 text-sm text-red-400" role="alert">{error}</p>}

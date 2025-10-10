@@ -24,10 +24,12 @@ export default function Home() {
   const [hotlineError, setHotlineError] = useState<string | null>(null);
   const pressTimerRef = useRef<number | null>(null);
   const isPressingRef = useRef(false);
+  const [isPressing, setIsPressing] = useState(false);
   const endBannerTimerRef = useRef<number | null>(null);
 
   const startPress = () => {
     isPressingRef.current = true;
+    setIsPressing(true);
     setHotlineError(null);
     setHotlineStatus('Dispatching operator…');
     if ('vibrate' in navigator) navigator.vibrate(10);
@@ -50,6 +52,7 @@ export default function Home() {
   };
   const endPress = () => {
     isPressingRef.current = false;
+    setIsPressing(false);
     if (pressTimerRef.current) {
       clearTimeout(pressTimerRef.current);
       pressTimerRef.current = null;
@@ -251,13 +254,15 @@ export default function Home() {
                     onPointerLeave={endPress}
                     onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') startPress(); }}
                     onKeyUp={endPress}
-                    aria-pressed={isActivating}
+                    aria-pressed={isPressing || isActivating || Boolean(activeSession?.active)}
                     aria-label="Activate hotline"
-                    disabled={isActivating}
-                    aria-disabled={isActivating}
-                    className={`w-24 h-24 rounded-full flex items-center justify-center text-main-text text-sm font-bold shadow-lg select-none ${isActivating ? 'bg-gray-700' : 'bg-alert animate-redPulse'}`}
+                    disabled={isActivating || Boolean(activeSession?.active)}
+                    aria-disabled={isActivating || Boolean(activeSession?.active)}
+                    className={`w-24 h-24 rounded-full flex items-center justify-center text-main-text text-sm font-bold shadow-lg select-none
+                      ${activeSession?.active ? 'bg-green-600' : isActivating ? 'bg-gray-700' : 'bg-alert animate-redPulse'}
+                      ${isPressing && !isActivating && !activeSession?.active ? 'ring-2 ring-cta scale-95' : ''}`}
                   >
-                    {isActivating ? 'Dispatching…' : 'Activate'}
+                    {activeSession?.active ? 'Connected' : isActivating ? 'Dispatching…' : isPressing ? 'Hold…' : 'Activate'}
                   </button>
                   <div className={`text-sm ${hotlineStatus === 'Failed' ? 'text-red-400' : 'text-accent'}`} aria-live="polite">{hotlineStatus}</div>
                 </div>
