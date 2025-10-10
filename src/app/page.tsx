@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import SplashScreen from '@/components/SplashScreen';
 import Layout from '@/components/Layout';
 import CardCarousel from '@/components/CardCarousel';
+import HotlineButton from '@/components/HotlineButton';
 
 export default function Home() {
   const [loading, setLoading] = useState(true);
@@ -248,22 +249,16 @@ export default function Home() {
                 </div>
               ) : (
                 <div className="mt-4 flex items-center gap-4">
-                  <button
+                  <HotlineButton
+                    session={activeSession as any}
+                    isPressing={isPressing}
+                    isActivating={isActivating}
                     onPointerDown={startPress}
                     onPointerUp={endPress}
                     onPointerLeave={endPress}
                     onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') startPress(); }}
                     onKeyUp={endPress}
-                    aria-pressed={isPressing || isActivating || Boolean(activeSession?.active)}
-                    aria-label="Activate hotline"
-                    disabled={isActivating || Boolean(activeSession?.active)}
-                    aria-disabled={isActivating || Boolean(activeSession?.active)}
-                    className={`w-24 h-24 rounded-full flex items-center justify-center text-main-text text-sm font-bold shadow-lg select-none
-                      ${activeSession?.active ? 'bg-green-600' : isActivating ? 'bg-gray-700' : 'bg-alert animate-redPulse'}
-                      ${isPressing && !isActivating && !activeSession?.active ? 'ring-2 ring-cta scale-95' : ''}`}
-                  >
-                    {activeSession?.active ? 'Connected' : isActivating ? 'Dispatching…' : isPressing ? 'Hold…' : 'Activate'}
-                  </button>
+                  />
                   <div className={`text-sm ${hotlineStatus === 'Failed' ? 'text-red-400' : 'text-accent'}`} aria-live="polite">{hotlineStatus}</div>
                 </div>
               )}

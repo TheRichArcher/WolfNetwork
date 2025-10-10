@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import posthog from 'posthog-js';
 import Layout from '@/components/Layout';
+import HotlineButton from '@/components/HotlineButton';
 
 const LONG_PRESS_MS = 1500;
 
@@ -128,22 +129,16 @@ const HotlinePage = () => {
         <h1 className="text-3xl font-bold">Crisis Hotline</h1>
         <p className="text-accent mt-2 text-sm">Wolf ID: <span className="font-mono">{wolfId || '—'}</span></p>
         <p className="text-accent mt-4 max-w-md">Press and hold to activate. Release to cancel before activation.</p>
-        <button
+        <HotlineButton
+          session={{ active: isActivated }}
+          isPressing={isPressing}
+          isActivating={isActivated}
           onPointerDown={startPress}
           onPointerUp={endPress}
           onPointerLeave={endPress}
           onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') startPress(); }}
           onKeyUp={endPress}
-          aria-pressed={isPressing || isActivated}
-          aria-label="Activate hotline"
-          disabled={isActivated}
-          aria-disabled={isActivated}
-          className={`mt-8 w-48 h-48 rounded-full flex items-center justify-center text-main-text text-2xl font-bold shadow-lg select-none
-            ${isActivated ? 'bg-green-600' : 'bg-alert animate-redPulse'}
-            ${isPressing && !isActivated ? 'ring-2 ring-cta scale-95' : ''}`}
-        >
-          {isActivated ? 'Connected' : isPressing ? 'Hold…' : 'Activate'}
-        </button>
+        />
         <p className="mt-4 text-sm text-accent" aria-live="polite">{status}</p>
         {error && <p className="mt-2 text-sm text-red-400" role="alert">{error}</p>}
       </div>
