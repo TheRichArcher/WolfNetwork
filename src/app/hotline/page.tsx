@@ -11,6 +11,7 @@ const HotlinePage = () => {
   const [status, setStatus] = useState('Idle');
   const [wolfId, setWolfId] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
+  const endMessageTimerRef = useRef<number | null>(null);
 
   const pressTimerRef = useRef<number | null>(null);
   const isPressingRef = useRef(false);
@@ -60,6 +61,53 @@ const HotlinePage = () => {
     }).catch(() => {});
     return () => { cancelled = true; };
   }, []);
+
+  // Poll active session to reflect live call status and auto-reset UI after call ends
+  useEffect(() => {
+    let cancelled = false;
+    let timer: number | null = null;
+    const TERMINAL = new Set(['completed', 'busy', 'no-answer', 'failed', 'canceled']);
+    const load = () => {
+      fetch('/api/me/active-session')
+        .then(async (r) => (r.ok ? r.json() : null))
+        .then((j) => {
+          if (!j || cancelled) return;
+          const twilioStatus: string | undefined = j.twilioStatus;
+          const active: boolean = Boolean(j.active);
+          if (active) {
+            if (!isActivated) setIsActivated(true);
+            if (status !== 'Connected') setStatus('Connected');
+          } else {
+            // If call ended and we have a final status, show it briefly then reset to Idle
+            if (twilioStatus && TERMINAL.has(twilioStatus)) {
+              const duration = typeof j.durationSeconds === 'number' ? j.durationSeconds : undefined;
+              const endedMsg = `Ended: ${twilioStatus}${typeof duration === 'number' ? ` (${duration}s)` : ''}`;
+              setStatus(endedMsg);
+              setIsActivated(false);
+              if (endMessageTimerRef.current) {
+                window.clearTimeout(endMessageTimerRef.current);
+                endMessageTimerRef.current = null;
+              }
+              endMessageTimerRef.current = window.setTimeout(() => {
+                setStatus('Idle');
+              }, 8000);
+            } else if (!twilioStatus) {
+              // No status available; ensure UI is reset
+              setIsActivated(false);
+              setStatus('Idle');
+            }
+          }
+        })
+        .catch(() => {});
+    };
+    load();
+    timer = window.setInterval(load, 5000);
+    return () => {
+      cancelled = true;
+      if (timer) window.clearInterval(timer);
+      if (endMessageTimerRef.current) window.clearTimeout(endMessageTimerRef.current);
+    };
+  }, [isActivated, status]);
 
   const overlay = useMemo(() => (
     <div className="fixed inset-0 bg-black bg-opacity-80 z-50 flex flex-col items-center justify-center animate-fadeIn">

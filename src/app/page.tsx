@@ -24,6 +24,7 @@ export default function Home() {
   const [hotlineError, setHotlineError] = useState<string | null>(null);
   const pressTimerRef = useRef<number | null>(null);
   const isPressingRef = useRef(false);
+  const endBannerTimerRef = useRef<number | null>(null);
 
   const startPress = () => {
     isPressingRef.current = true;
@@ -137,6 +138,22 @@ export default function Home() {
         .then((j) => {
           if (!j || cancelled) return;
           setActiveSession(j);
+          if (j.active) {
+            if (hotlineStatus !== 'Connected to operator') setHotlineStatus('Connected to operator');
+          } else {
+            const terminal = new Set(['completed', 'busy', 'no-answer', 'failed', 'canceled']);
+            if (j.twilioStatus && terminal.has(j.twilioStatus)) {
+              const endedMsg = `Ended: ${j.twilioStatus}${typeof j.durationSeconds === 'number' ? ` (${j.durationSeconds}s)` : ''}`;
+              setHotlineStatus(endedMsg);
+              if (endBannerTimerRef.current) {
+                window.clearTimeout(endBannerTimerRef.current);
+                endBannerTimerRef.current = null;
+              }
+              endBannerTimerRef.current = window.setTimeout(() => setHotlineStatus('Idle'), 8000);
+            } else if (!j.twilioStatus) {
+              setHotlineStatus('Idle');
+            }
+          }
         })
         .catch(() => {});
     };
@@ -145,6 +162,7 @@ export default function Home() {
     return () => {
       cancelled = true;
       if (timer) window.clearInterval(timer);
+      if (endBannerTimerRef.current) window.clearTimeout(endBannerTimerRef.current);
     };
   }, []);
 

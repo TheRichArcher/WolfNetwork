@@ -148,22 +148,22 @@ export async function findIncidentByCallSid(callSid: string): Promise<IncidentRe
   if (records.length === 0) return null;
   const r = records[0];
   return {
-    id: (r.get('id') as string) || '',
-    wolfId: (r.get('wolfId') as string) || '',
-    sessionSid: (r.get('sessionSid') as string) || '',
-    status: (r.get('status') as IncidentRecord['status']) || 'initiated',
-    type: (r.get('type') as IncidentRecord['type']) || 'unknown',
-    partnerId: (r.get('partnerId') as string) || undefined,
-    operatorId: (r.get('operatorId') as string) || undefined,
-    createdAt: (r.get('createdAt') as string) || '',
-    resolvedAt: (r.get('resolvedAt') as string) || undefined,
-    tier: (r.get('tier') as IncidentRecord['tier']) || undefined,
-    region: (r.get('region') as IncidentRecord['region']) || undefined,
-    callSid: (r.get('callSid') as string) || undefined,
-    activatedAt: (r.get('activatedAt') as string) || undefined,
-    statusReason: (r.get('statusReason') as string) || undefined,
-    twilioStatus: (r.get('twilioStatus') as string) || undefined,
-    durationSeconds: (r.get('durationSeconds') as number) || undefined,
+    id: (getField<string>(r, ['id', 'ID']) as string) || '',
+    wolfId: (getField<string>(r, ['wolfId', 'Invite Code']) as string) || '',
+    sessionSid: (getField<string>(r, ['sessionSid', 'SessionSid']) as string) || '',
+    status: (getField<IncidentRecord['status']>(r, ['status', 'Status']) as IncidentRecord['status']) || 'initiated',
+    type: (getField<IncidentRecord['type']>(r, ['type', 'Type']) as IncidentRecord['type']) || 'unknown',
+    partnerId: (getField<string>(r, ['partnerId', 'PartnerId']) as string) || undefined,
+    operatorId: (getField<string>(r, ['operatorId', 'OperatorId']) as string) || undefined,
+    createdAt: (getField<string>(r, ['createdAt', 'CreatedAt']) as string) || '',
+    resolvedAt: (getField<string>(r, ['resolvedAt', 'ResolvedAt']) as string) || undefined,
+    tier: (getField<IncidentRecord['tier']>(r, ['tier', 'Tier']) as IncidentRecord['tier']) || undefined,
+    region: (getField<IncidentRecord['region']>(r, ['region', 'Region']) as IncidentRecord['region']) || undefined,
+    callSid: (getField<string>(r, ['callSid', 'CallSid']) as string) || undefined,
+    activatedAt: (getField<string>(r, ['activatedAt', 'ActivatedAt']) as string) || undefined,
+    statusReason: (getField<string>(r, ['statusReason', 'StatusReason']) as string) || undefined,
+    twilioStatus: (getField<string>(r, ['twilioStatus', 'TwilioStatus']) as string) || undefined,
+    durationSeconds: (getField<number>(r, ['durationSeconds', 'DurationSeconds']) as number) || undefined,
   };
 }
 
