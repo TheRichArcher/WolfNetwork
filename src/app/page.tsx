@@ -39,6 +39,7 @@ export default function Home() {
         const data = await resp.json();
         if (!resp.ok) throw new Error(data?.error || 'Activation failed');
         setHotlineStatus('Connected to operator');
+        setIsActivating(false);
         if ('vibrate' in navigator) navigator.vibrate([30, 50, 30]);
       } catch {
         setHotlineStatus('Failed');
@@ -140,11 +141,13 @@ export default function Home() {
           setActiveSession(j);
           if (j.active) {
             if (hotlineStatus !== 'Connected to operator') setHotlineStatus('Connected to operator');
+            if (isActivating) setIsActivating(false);
           } else {
             const terminal = new Set(['completed', 'busy', 'no-answer', 'failed', 'canceled']);
             if (j.twilioStatus && terminal.has(j.twilioStatus)) {
               const endedMsg = `Ended: ${j.twilioStatus}${typeof j.durationSeconds === 'number' ? ` (${j.durationSeconds}s)` : ''}`;
               setHotlineStatus(endedMsg);
+              if (isActivating) setIsActivating(false);
               if (endBannerTimerRef.current) {
                 window.clearTimeout(endBannerTimerRef.current);
                 endBannerTimerRef.current = null;
@@ -152,6 +155,7 @@ export default function Home() {
               endBannerTimerRef.current = window.setTimeout(() => setHotlineStatus('Idle'), 8000);
             } else if (!j.twilioStatus) {
               setHotlineStatus('Idle');
+              if (isActivating) setIsActivating(false);
             }
           }
         })
