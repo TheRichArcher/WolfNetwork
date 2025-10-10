@@ -16,6 +16,7 @@ async function createTwilioCall(params: {
   const { accountSid, authToken, from, to, twimlUrl } = params;
   const authHeader = Buffer.from(`${accountSid}:${authToken}`).toString("base64");
   const body = new URLSearchParams({ To: to, From: from, Url: twimlUrl, Method: "POST" });
+  const env = getEnv();
   const callbackUrl = env.PUBLIC_BASE_URL ? `${env.PUBLIC_BASE_URL}/api/twilio/call-status` : '';
   if (callbackUrl) {
     body.set('StatusCallback', callbackUrl);
