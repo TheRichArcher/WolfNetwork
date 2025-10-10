@@ -35,6 +35,11 @@ export async function getActiveIncidentForEmail(email: string): Promise<Incident
     resolvedAt: (r.get('resolvedAt') as string) || undefined,
     tier: (r.get('tier') as IncidentRecord['tier']) || undefined,
     region: (r.get('region') as IncidentRecord['region']) || undefined,
+    callSid: (r.get('callSid') as string) || undefined,
+    activatedAt: (r.get('activatedAt') as string) || undefined,
+    statusReason: (r.get('statusReason') as string) || undefined,
+    twilioStatus: (r.get('twilioStatus') as string) || undefined,
+    durationSeconds: (r.get('durationSeconds') as number) || undefined,
   };
 }
 

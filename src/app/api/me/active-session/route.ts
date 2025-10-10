@@ -31,8 +31,11 @@ export async function GET(req: NextRequest) {
     sessionSid: incident.sessionSid,
     callSid: (incident as unknown as { callSid?: string }).callSid || undefined,
     incidentId: incident.id,
+    wolfId: incident.wolfId,
     operator,
     startedAt,
+    twilioStatus: (incident as unknown as { twilioStatus?: string }).twilioStatus || undefined,
+    durationSeconds: (incident as unknown as { durationSeconds?: number }).durationSeconds || undefined,
   });
 }
 
