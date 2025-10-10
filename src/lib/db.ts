@@ -42,6 +42,11 @@ function getBase() {
   return base;
 }
 
+function extractStatusCode(err: unknown): number | undefined {
+  const maybe = (err as { statusCode?: unknown })?.statusCode;
+  return typeof maybe === 'number' ? maybe : undefined;
+}
+
 function getField<T = unknown>(r: Airtable.Record<FieldSet>, candidates: string[], fallback?: T): T | undefined {
   for (const key of candidates) {
     const v = r.get(key);
@@ -70,7 +75,7 @@ export async function findUserBySessionEmail(email: string): Promise<UserRecord 
     };
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
-    const statusCode = (e as any)?.statusCode;
+    const statusCode = extractStatusCode(e);
     logEvent({ event: 'airtable_error', op: 'select', table: USERS_TABLE, statusCode, error: msg });
     throw e;
   }
@@ -120,7 +125,7 @@ export async function createIncident(incident: IncidentRecord): Promise<Incident
     };
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
-    const statusCode = (e as any)?.statusCode;
+    const statusCode = extractStatusCode(e);
     logEvent({ event: 'airtable_error', op: 'create', table: INCIDENTS_TABLE, statusCode, error: msg });
     throw e;
   }
@@ -155,7 +160,7 @@ export async function updateIncident(id: string, fields: Partial<IncidentRecord>
     await table.update([{ id: recordId, fields: projected } as unknown as any]);
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
-    const statusCode = (e as any)?.statusCode;
+    const statusCode = extractStatusCode(e);
     logEvent({ event: 'airtable_error', op: 'update', table: INCIDENTS_TABLE, statusCode, error: msg });
     throw e;
   }
@@ -190,7 +195,7 @@ export async function findIncidentByCallSid(callSid: string): Promise<IncidentRe
     };
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
-    const statusCode = (e as any)?.statusCode;
+    const statusCode = extractStatusCode(e);
     logEvent({ event: 'airtable_error', op: 'select', table: 'incidents', statusCode, error: msg });
     throw e;
   }
@@ -231,7 +236,7 @@ export async function findIncidentById(customIdOrRecId: string): Promise<Inciden
     };
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
-    const statusCode = (e as any)?.statusCode;
+    const statusCode = extractStatusCode(e);
     logEvent({ event: 'airtable_error', op: 'find', table: 'incidents', statusCode, error: msg });
     throw e;
   }
@@ -265,7 +270,7 @@ export async function findLastResolvedIncidentForWolfId(wolfId: string): Promise
     };
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
-    const statusCode = (e as any)?.statusCode;
+    const statusCode = extractStatusCode(e);
     logEvent({ event: 'airtable_error', op: 'select', table: INCIDENTS_TABLE, statusCode, error: msg });
     throw e;
   }

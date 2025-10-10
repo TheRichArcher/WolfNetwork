@@ -1,6 +1,11 @@
 import Airtable from 'airtable';
 import { getEnv } from './env';
 import { logEvent } from './log';
+
+function extractStatusCode(err: unknown): number | undefined {
+  const maybe = (err as { statusCode?: unknown })?.statusCode;
+  return typeof maybe === 'number' ? maybe : undefined;
+}
 import { findUserBySessionEmail, type IncidentRecord } from './db';
 
 function getBase() {
@@ -45,7 +50,7 @@ export async function getActiveIncidentForEmail(email: string): Promise<Incident
     };
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
-    const statusCode = (e as any)?.statusCode;
+    const statusCode = extractStatusCode(e);
     logEvent({ event: 'airtable_error', op: 'select', table: 'incidents', statusCode, error: msg });
     throw e;
   }
