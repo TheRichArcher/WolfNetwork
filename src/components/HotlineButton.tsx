@@ -88,6 +88,7 @@ export default function HotlineButton(props: Props) {
         const t = Date.now() + 8000;
         setTerminalResetAt(t);
         const timer = window.setTimeout(() => setTerminalResetAt(null), 8000);
+        try { (window as any).__wolfLog && (window as any).__wolfLog({ event: 'hotline_button_reset_triggered', status, duration: session?.durationSeconds }); } catch {}
         return () => window.clearTimeout(timer);
       }
     } else if (status && !isInProgress(status)) {

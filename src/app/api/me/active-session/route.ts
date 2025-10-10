@@ -42,6 +42,11 @@ export async function GET(req: NextRequest) {
     startedAt,
     twilioStatus: (incident as unknown as { twilioStatus?: string }).twilioStatus || undefined,
     durationSeconds: (incident as unknown as { durationSeconds?: number }).durationSeconds || undefined,
+    // For faster UI response, surface a derived terminal flag
+    isTerminal: ((): boolean => {
+      const s = String((incident as unknown as { twilioStatus?: string }).twilioStatus || '').toLowerCase();
+      return s === 'completed' || s === 'busy' || s === 'no-answer' || s === 'failed' || s === 'canceled';
+    })(),
   });
 }
 

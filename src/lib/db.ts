@@ -267,6 +267,11 @@ export async function findLastResolvedIncidentForWolfId(wolfId: string): Promise
       resolvedAt: (getField<string>(r, ['resolvedAt', 'ResolvedAt']) as string) || undefined,
       tier: (getField<IncidentRecord['tier']>(r, ['tier', 'Tier']) as IncidentRecord['tier']) || undefined,
       region: (getField<IncidentRecord['region']>(r, ['region', 'Region']) as IncidentRecord['region']) || undefined,
+      callSid: (getField<string>(r, ['callSid', 'CallSid']) as string) || undefined,
+      activatedAt: (getField<string>(r, ['activatedAt', 'ActivatedAt']) as string) || undefined,
+      statusReason: (getField<string>(r, ['statusReason', 'StatusReason']) as string) || undefined,
+      twilioStatus: (getField<string>(r, ['twilioStatus', 'TwilioStatus']) as string) || undefined,
+      durationSeconds: (getField<number>(r, ['durationSeconds', 'DurationSeconds']) as number) || undefined,
     };
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
