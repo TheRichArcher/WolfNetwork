@@ -1,15 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
-import { getActiveIncidentForEmail } from '@/lib/incidents';
+import { getActiveIncidentForEmail, getActiveIncidentForWolfId } from '@/lib/incidents';
 import { updateIncident } from '@/lib/db';
 import { logEvent } from '@/lib/log';
 
 export async function GET(req: NextRequest) {
   const token = await getToken({ req });
   const email = typeof token?.email === 'string' ? token.email : undefined;
-  if (!email) return NextResponse.json({ active: false });
-
-  const incident = await getActiveIncidentForEmail(email);
+  let incident = null;
+  if (email) {
+    incident = await getActiveIncidentForEmail(email);
+  } else if (process.env.AUTH_DEV_BYPASS === 'true') {
+    const wolfId = process.env.DEV_WOLF_ID || 'WOLF-DEV-1234';
+    incident = await getActiveIncidentForWolfId(wolfId);
+  } else {
+    return NextResponse.json({ active: false });
+  }
   if (!incident) return NextResponse.json({ active: false });
 
   // Lazy cleanup: resolve stale initiated incidents after 30 minutes
