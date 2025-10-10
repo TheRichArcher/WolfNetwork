@@ -8,6 +8,17 @@ export async function GET(req: NextRequest) {
   const token = await getToken({ req });
   const email = typeof token?.email === 'string' ? token.email : undefined;
 
+  // Allow testing without auth when explicitly enabled
+  if (!email && process.env.AUTH_DEV_BYPASS === 'true') {
+    const presence = [
+      { category: 'Legal', name: 'Counsel', status: 'Active' as const },
+      { category: 'Medical', name: 'Clinician', status: 'Rotating' as const },
+      { category: 'PR', name: 'Comms', status: 'Active' as const },
+      { category: 'Security', name: 'Field Team', status: 'Offline' as const },
+    ];
+    return NextResponse.json({ partners: presence });
+  }
+
   if (!email) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const user = await findUserBySessionEmail(email);

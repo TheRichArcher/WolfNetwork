@@ -75,7 +75,6 @@ export async function createIncident(incident: IncidentRecord): Promise<Incident
     {
       fields: {
         // Write to common variants to increase compatibility with existing bases
-        id: incident.id,
         ID: incident.id,
         wolfId: incident.wolfId,
         'Invite Code': incident.wolfId,

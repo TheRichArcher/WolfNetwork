@@ -28,6 +28,7 @@ export default withAuth(function middleware(req: NextRequest) {
       "/api/me/security-status",
       "/api/me/last-incident",
       "/api/me/team",
+      "/api/partners/presence",
       "/",
       "/hotline",
       "/profile",
