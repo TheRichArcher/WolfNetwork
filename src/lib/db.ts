@@ -1,5 +1,5 @@
 // Lightweight Airtable-backed data access for demo; replace with Postgres/Prisma in production.
-import Airtable from 'airtable';
+import Airtable, { type FieldSet } from 'airtable';
 import { getEnv } from './env';
 
 export type UserRecord = {
@@ -41,7 +41,7 @@ function getBase() {
   return base;
 }
 
-function getField<T = unknown>(r: Airtable.Record<any>, candidates: string[], fallback?: T): T | undefined {
+function getField<T = unknown>(r: Airtable.Record<FieldSet>, candidates: string[], fallback?: T): T | undefined {
   for (const key of candidates) {
     const v = r.get(key);
     if (v !== undefined && v !== null && String(v).length > 0) return v as T;
