@@ -1,6 +1,7 @@
 // Lightweight Airtable-backed data access for demo; replace with Postgres/Prisma in production.
 import Airtable, { type FieldSet } from 'airtable';
 import { getEnv } from './env';
+import { logEvent } from './log';
 
 export type UserRecord = {
   id: string; // UUID
@@ -50,104 +51,126 @@ function getField<T = unknown>(r: Airtable.Record<FieldSet>, candidates: string[
 }
 
 export async function findUserBySessionEmail(email: string): Promise<UserRecord | null> {
-  // For demo: map user by email to a Users table
-  const base = getBase();
-  const table = base(USERS_TABLE);
-  const records = await table
-    .select({ filterByFormula: `OR({email} = '${email}', {Email} = '${email}')`, maxRecords: 1 })
-    .firstPage();
-  if (records.length === 0) return null;
-  const r = records[0];
-  return {
-    id: (getField<string>(r, ['id', 'ID']) as string) || r.id,
-    wolfId: (getField<string>(r, ['wolfId', 'Invite Code', 'inviteCode']) as string) || '',
-    phoneEncrypted: (getField<string>(r, ['phoneEncrypted', 'Phone Encrypted', 'phoneencrypted']) as string) || '',
-    tier: (getField<UserRecord['tier']>(r, ['tier', 'Tier']) as UserRecord['tier']) || 'Silver',
-    region: (getField<string>(r, ['region', 'Region']) as string) || 'LA',
-    createdAt: (getField<string>(r, ['createdAt', 'CreatedAt', 'Created At']) as string) || new Date().toISOString(),
-  };
+  try {
+    // For demo: map user by email to a Users table
+    const base = getBase();
+    const table = base(USERS_TABLE);
+    const records = await table
+      .select({ filterByFormula: `OR({email} = '${email}', {Email} = '${email}')`, maxRecords: 1 })
+      .firstPage();
+    if (records.length === 0) return null;
+    const r = records[0];
+    return {
+      id: (getField<string>(r, ['id', 'ID']) as string) || r.id,
+      wolfId: (getField<string>(r, ['wolfId', 'Invite Code', 'inviteCode']) as string) || '',
+      phoneEncrypted: (getField<string>(r, ['phoneEncrypted', 'Phone Encrypted', 'phoneencrypted']) as string) || '',
+      tier: (getField<UserRecord['tier']>(r, ['tier', 'Tier']) as UserRecord['tier']) || 'Silver',
+      region: (getField<string>(r, ['region', 'Region']) as string) || 'LA',
+      createdAt: (getField<string>(r, ['createdAt', 'CreatedAt', 'Created At']) as string) || new Date().toISOString(),
+    };
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    const statusCode = (e as any)?.statusCode;
+    logEvent({ event: 'airtable_error', op: 'select', table: USERS_TABLE, statusCode, error: msg });
+    throw e;
+  }
 }
 
 export async function createIncident(incident: IncidentRecord): Promise<IncidentRecord> {
-  const base = getBase();
-  const table = base(INCIDENTS_TABLE);
-  const created = await table.create([
-    {
-      fields: {
-        // Write to common variants to increase compatibility with existing bases
-        ID: incident.id,
-        wolfId: incident.wolfId,
-        'Invite Code': incident.wolfId,
-        sessionSid: incident.sessionSid,
-        status: incident.status,
-        Status: incident.status,
-        type: incident.type || 'unknown',
-        partnerId: incident.partnerId || '',
-        operatorId: incident.operatorId || '',
-        createdAt: incident.createdAt,
-        CreatedAt: incident.createdAt,
-        resolvedAt: incident.resolvedAt || '',
-        ResolvedAt: incident.resolvedAt || '',
-        tier: incident.tier || '',
-        Tier: incident.tier || '',
-        region: incident.region || '',
-        Region: incident.region || '',
+  try {
+    const base = getBase();
+    const table = base(INCIDENTS_TABLE);
+    const created = await table.create([
+      {
+        fields: {
+          // Write to common variants to increase compatibility with existing bases
+          ID: incident.id,
+          wolfId: incident.wolfId,
+          'Invite Code': incident.wolfId,
+          sessionSid: incident.sessionSid,
+          status: incident.status,
+          Status: incident.status,
+          type: incident.type || 'unknown',
+          partnerId: incident.partnerId || '',
+          operatorId: incident.operatorId || '',
+          createdAt: incident.createdAt,
+          CreatedAt: incident.createdAt,
+          resolvedAt: incident.resolvedAt || '',
+          ResolvedAt: incident.resolvedAt || '',
+          tier: incident.tier || '',
+          Tier: incident.tier || '',
+          region: incident.region || '',
+          Region: incident.region || '',
+        },
       },
-    },
-  ]);
-  const r = created[0];
-  return {
-    id: (getField<string>(r, ['id', 'ID']) as string) || incident.id,
-    wolfId: (getField<string>(r, ['wolfId', 'Invite Code']) as string) || incident.wolfId,
-    sessionSid: (getField<string>(r, ['sessionSid', 'SessionSid']) as string) || '',
-    status: (getField<IncidentRecord['status']>(r, ['status', 'Status']) as IncidentRecord['status']) || 'initiated',
-    type: (getField<IncidentRecord['type']>(r, ['type', 'Type']) as IncidentRecord['type']) || 'unknown',
-    partnerId: (getField<string>(r, ['partnerId', 'PartnerId']) as string) || undefined,
-    operatorId: (getField<string>(r, ['operatorId', 'OperatorId']) as string) || undefined,
-    createdAt: (getField<string>(r, ['createdAt', 'CreatedAt']) as string) || incident.createdAt,
-    resolvedAt: (getField<string>(r, ['resolvedAt', 'ResolvedAt']) as string) || undefined,
-    tier: (getField<IncidentRecord['tier']>(r, ['tier', 'Tier']) as IncidentRecord['tier']) || undefined,
-    region: (getField<IncidentRecord['region']>(r, ['region', 'Region']) as IncidentRecord['region']) || undefined,
-  };
+    ]);
+    const r = created[0];
+    return {
+      id: (getField<string>(r, ['id', 'ID']) as string) || incident.id,
+      wolfId: (getField<string>(r, ['wolfId', 'Invite Code']) as string) || incident.wolfId,
+      sessionSid: (getField<string>(r, ['sessionSid', 'SessionSid']) as string) || '',
+      status: (getField<IncidentRecord['status']>(r, ['status', 'Status']) as IncidentRecord['status']) || 'initiated',
+      type: (getField<IncidentRecord['type']>(r, ['type', 'Type']) as IncidentRecord['type']) || 'unknown',
+      partnerId: (getField<string>(r, ['partnerId', 'PartnerId']) as string) || undefined,
+      operatorId: (getField<string>(r, ['operatorId', 'OperatorId']) as string) || undefined,
+      createdAt: (getField<string>(r, ['createdAt', 'CreatedAt']) as string) || incident.createdAt,
+      resolvedAt: (getField<string>(r, ['resolvedAt', 'ResolvedAt']) as string) || undefined,
+      tier: (getField<IncidentRecord['tier']>(r, ['tier', 'Tier']) as IncidentRecord['tier']) || undefined,
+      region: (getField<IncidentRecord['region']>(r, ['region', 'Region']) as IncidentRecord['region']) || undefined,
+    };
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    const statusCode = (e as any)?.statusCode;
+    logEvent({ event: 'airtable_error', op: 'create', table: INCIDENTS_TABLE, statusCode, error: msg });
+    throw e;
+  }
 }
 
 export async function updateIncident(id: string, fields: Partial<IncidentRecord>): Promise<void> {
-  const base = getBase();
-  const table = base(INCIDENTS_TABLE);
-  // Airtable typings are lax; project only known fields to avoid any
-  const projected: Record<string, unknown> = {};
-  if (typeof fields.status === 'string') { projected.status = fields.status; projected.Status = fields.status; }
-  if (typeof fields.resolvedAt === 'string') { projected.resolvedAt = fields.resolvedAt; projected.ResolvedAt = fields.resolvedAt; }
-  if (typeof fields.partnerId === 'string') projected.partnerId = fields.partnerId;
-  if (typeof fields.operatorId === 'string') projected.operatorId = fields.operatorId;
-  if (typeof fields.sessionSid === 'string') { projected.sessionSid = fields.sessionSid; projected.SessionSid = fields.sessionSid; }
-  if (typeof fields.callSid === 'string') { projected.callSid = fields.callSid; projected.CallSid = fields.callSid; }
-  if (typeof fields.activatedAt === 'string') { projected.activatedAt = fields.activatedAt; projected.ActivatedAt = fields.activatedAt; }
-  if (typeof fields.statusReason === 'string') projected.statusReason = fields.statusReason;
-  if (typeof fields.twilioStatus === 'string') projected.twilioStatus = fields.twilioStatus;
-  if (typeof fields.durationSeconds === 'number') projected.durationSeconds = fields.durationSeconds;
-  // Resolve whether the provided id is an Airtable Record ID (rec...) or our custom UUID in the {id} field
-  let recordId = id;
-  if (!/^rec[a-zA-Z0-9]{14}$/i.test(id)) {
-    const matches = await table
-      .select({ filterByFormula: `OR({id} = '${id}', {ID} = '${id}')`, maxRecords: 1 })
-      .firstPage();
-    if (matches.length === 0) throw new Error(`Incident not found for custom id ${id}`);
-    recordId = matches[0].id;
+  try {
+    const base = getBase();
+    const table = base(INCIDENTS_TABLE);
+    // Airtable typings are lax; project only known fields to avoid any
+    const projected: Record<string, unknown> = {};
+    if (typeof fields.status === 'string') { projected.status = fields.status; projected.Status = fields.status; }
+    if (typeof fields.resolvedAt === 'string') { projected.resolvedAt = fields.resolvedAt; projected.ResolvedAt = fields.resolvedAt; }
+    if (typeof fields.partnerId === 'string') projected.partnerId = fields.partnerId;
+    if (typeof fields.operatorId === 'string') projected.operatorId = fields.operatorId;
+    if (typeof fields.sessionSid === 'string') { projected.sessionSid = fields.sessionSid; projected.SessionSid = fields.sessionSid; }
+    if (typeof fields.callSid === 'string') { projected.callSid = fields.callSid; projected.CallSid = fields.callSid; }
+    if (typeof fields.activatedAt === 'string') { projected.activatedAt = fields.activatedAt; projected.ActivatedAt = fields.activatedAt; }
+    if (typeof fields.statusReason === 'string') projected.statusReason = fields.statusReason;
+    if (typeof fields.twilioStatus === 'string') projected.twilioStatus = fields.twilioStatus;
+    if (typeof fields.durationSeconds === 'number') projected.durationSeconds = fields.durationSeconds;
+    // Resolve whether the provided id is an Airtable Record ID (rec...) or our custom UUID in the {id} field
+    let recordId = id;
+    if (!/^rec[a-zA-Z0-9]{14}$/i.test(id)) {
+      const matches = await table
+        .select({ filterByFormula: `OR({id} = '${id}', {ID} = '${id}')`, maxRecords: 1 })
+        .firstPage();
+      if (matches.length === 0) throw new Error(`Incident not found for custom id ${id}`);
+      recordId = matches[0].id;
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await table.update([{ id: recordId, fields: projected } as unknown as any]);
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    const statusCode = (e as any)?.statusCode;
+    logEvent({ event: 'airtable_error', op: 'update', table: INCIDENTS_TABLE, statusCode, error: msg });
+    throw e;
   }
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await table.update([{ id: recordId, fields: projected } as unknown as any]);
 }
 
 export async function findIncidentByCallSid(callSid: string): Promise<IncidentRecord | null> {
-  const base = getBase();
-  const table = base('incidents');
-  const records = await table
-    .select({ filterByFormula: `{callSid} = '${callSid}'`, maxRecords: 1 })
-    .firstPage();
-  if (records.length === 0) return null;
-  const r = records[0];
-  return {
+  try {
+    const base = getBase();
+    const table = base('incidents');
+    const records = await table
+      .select({ filterByFormula: `{callSid} = '${callSid}'`, maxRecords: 1 })
+      .firstPage();
+    if (records.length === 0) return null;
+    const r = records[0];
+    return {
     id: (getField<string>(r, ['id', 'ID']) as string) || '',
     wolfId: (getField<string>(r, ['wolfId', 'Invite Code']) as string) || '',
     sessionSid: (getField<string>(r, ['sessionSid', 'SessionSid']) as string) || '',
@@ -164,24 +187,31 @@ export async function findIncidentByCallSid(callSid: string): Promise<IncidentRe
     statusReason: (getField<string>(r, ['statusReason', 'StatusReason']) as string) || undefined,
     twilioStatus: (getField<string>(r, ['twilioStatus', 'TwilioStatus']) as string) || undefined,
     durationSeconds: (getField<number>(r, ['durationSeconds', 'DurationSeconds']) as number) || undefined,
-  };
+    };
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    const statusCode = (e as any)?.statusCode;
+    logEvent({ event: 'airtable_error', op: 'select', table: 'incidents', statusCode, error: msg });
+    throw e;
+  }
 }
 
 export async function findIncidentById(customIdOrRecId: string): Promise<IncidentRecord | null> {
-  const base = getBase();
-  const table = base('incidents');
-  let record = null;
-  if (/^rec[a-zA-Z0-9]{14}$/i.test(customIdOrRecId)) {
-    record = await table.find(customIdOrRecId).catch(() => null);
-  } else {
-    const records = await table
-      .select({ filterByFormula: `{id} = '${customIdOrRecId}'`, maxRecords: 1 })
-      .firstPage();
-    record = records[0] || null;
-  }
-  if (!record) return null;
-  const r = record;
-  return {
+  try {
+    const base = getBase();
+    const table = base('incidents');
+    let record = null;
+    if (/^rec[a-zA-Z0-9]{14}$/i.test(customIdOrRecId)) {
+      record = await table.find(customIdOrRecId).catch(() => null);
+    } else {
+      const records = await table
+        .select({ filterByFormula: `{id} = '${customIdOrRecId}'`, maxRecords: 1 })
+        .firstPage();
+      record = records[0] || null;
+    }
+    if (!record) return null;
+    const r = record;
+    return {
     id: (r.get('id') as string) || '',
     wolfId: (r.get('wolfId') as string) || '',
     sessionSid: (r.get('sessionSid') as string) || '',
@@ -198,34 +228,47 @@ export async function findIncidentById(customIdOrRecId: string): Promise<Inciden
     statusReason: (r.get('statusReason') as string) || undefined,
     twilioStatus: (r.get('twilioStatus') as string) || undefined,
     durationSeconds: (r.get('durationSeconds') as number) || undefined,
-  };
+    };
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    const statusCode = (e as any)?.statusCode;
+    logEvent({ event: 'airtable_error', op: 'find', table: 'incidents', statusCode, error: msg });
+    throw e;
+  }
 }
 
 export async function findLastResolvedIncidentForWolfId(wolfId: string): Promise<IncidentRecord | null> {
-  const base = getBase();
-  const table = base(INCIDENTS_TABLE);
-  const records = await table
-    .select({
-      filterByFormula: `AND(OR({wolfId} = '${wolfId}', {Invite Code} = '${wolfId}'), OR({status} = 'resolved', {Status} = 'resolved'))`,
-      sort: [{ field: 'resolvedAt', direction: 'desc' }],
-      maxRecords: 1,
-    })
-    .firstPage();
-  if (records.length === 0) return null;
-  const r = records[0];
-  return {
-    id: (getField<string>(r, ['id', 'ID']) as string) || '',
-    wolfId: (getField<string>(r, ['wolfId', 'Invite Code']) as string) || '',
-    sessionSid: (getField<string>(r, ['sessionSid', 'SessionSid']) as string) || '',
-    status: (getField<IncidentRecord['status']>(r, ['status', 'Status']) as IncidentRecord['status']) || 'resolved',
-    type: (getField<IncidentRecord['type']>(r, ['type', 'Type']) as IncidentRecord['type']) || 'unknown',
-    partnerId: (getField<string>(r, ['partnerId', 'PartnerId']) as string) || undefined,
-    operatorId: (getField<string>(r, ['operatorId', 'OperatorId']) as string) || undefined,
-    createdAt: (getField<string>(r, ['createdAt', 'CreatedAt']) as string) || '',
-    resolvedAt: (getField<string>(r, ['resolvedAt', 'ResolvedAt']) as string) || undefined,
-    tier: (getField<IncidentRecord['tier']>(r, ['tier', 'Tier']) as IncidentRecord['tier']) || undefined,
-    region: (getField<IncidentRecord['region']>(r, ['region', 'Region']) as IncidentRecord['region']) || undefined,
-  };
+  try {
+    const base = getBase();
+    const table = base(INCIDENTS_TABLE);
+    const records = await table
+      .select({
+        filterByFormula: `AND(OR({wolfId} = '${wolfId}', {Invite Code} = '${wolfId}'), OR({status} = 'resolved', {Status} = 'resolved'))`,
+        sort: [{ field: 'resolvedAt', direction: 'desc' }],
+        maxRecords: 1,
+      })
+      .firstPage();
+    if (records.length === 0) return null;
+    const r = records[0];
+    return {
+      id: (getField<string>(r, ['id', 'ID']) as string) || '',
+      wolfId: (getField<string>(r, ['wolfId', 'Invite Code']) as string) || '',
+      sessionSid: (getField<string>(r, ['sessionSid', 'SessionSid']) as string) || '',
+      status: (getField<IncidentRecord['status']>(r, ['status', 'Status']) as IncidentRecord['status']) || 'resolved',
+      type: (getField<IncidentRecord['type']>(r, ['type', 'Type']) as IncidentRecord['type']) || 'unknown',
+      partnerId: (getField<string>(r, ['partnerId', 'PartnerId']) as string) || undefined,
+      operatorId: (getField<string>(r, ['operatorId', 'OperatorId']) as string) || undefined,
+      createdAt: (getField<string>(r, ['createdAt', 'CreatedAt']) as string) || '',
+      resolvedAt: (getField<string>(r, ['resolvedAt', 'ResolvedAt']) as string) || undefined,
+      tier: (getField<IncidentRecord['tier']>(r, ['tier', 'Tier']) as IncidentRecord['tier']) || undefined,
+      region: (getField<IncidentRecord['region']>(r, ['region', 'Region']) as IncidentRecord['region']) || undefined,
+    };
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    const statusCode = (e as any)?.statusCode;
+    logEvent({ event: 'airtable_error', op: 'select', table: INCIDENTS_TABLE, statusCode, error: msg });
+    throw e;
+  }
 }
 
 

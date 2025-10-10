@@ -60,6 +60,7 @@ export default function Home() {
     if (!isActivating) setHotlineStatus('Idle');
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     try {
       const fromLocalStorage = typeof window !== 'undefined' ? localStorage.getItem('userTier') : null;
@@ -210,11 +211,11 @@ export default function Home() {
 
   // fake relay latency by pinging a lightweight endpoint (or measure /api/me)
   useEffect(() => {
-    let cancelled = false;
-    const start = performance.now();
+    let _cancelled = false;
+    const _start = performance.now();
     fetch('/api/me').catch(() => {});
     return () => {
-      cancelled = true;
+      _cancelled = true;
     };
   }, []);
 
