@@ -10,6 +10,13 @@ export async function createDirectCall(toE164: string, twimlUrl: string): Promis
   if (!accountSid || !authToken || !fromNumber) throw new Error('Twilio env vars missing');
   const authHeader = Buffer.from(`${accountSid}:${authToken}`).toString('base64');
   const body = new URLSearchParams({ To: toE164, From: fromNumber, Url: twimlUrl, Method: 'POST' });
+  // Wire Twilio status callbacks when PUBLIC_BASE_URL is available
+  const callbackUrl = env.PUBLIC_BASE_URL ? `${env.PUBLIC_BASE_URL}/api/twilio/call-status` : '';
+  if (callbackUrl) {
+    body.set('StatusCallback', callbackUrl);
+    body.set('StatusCallbackMethod', 'POST');
+    body.set('StatusCallbackEvent', 'initiated ringing answered completed');
+  }
   const resp = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Calls.json`, {
     method: 'POST',
     headers: { Authorization: `Basic ${authHeader}`, 'Content-Type': 'application/x-www-form-urlencoded' },
