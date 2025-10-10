@@ -29,30 +29,47 @@ export async function POST(req: NextRequest) {
     const base = env.PUBLIC_BASE_URL || `${req.nextUrl.protocol}//${req.nextUrl.host}`;
     const twimlUrl = `${base}/api/hotline/twiml`;
 
-    const incidentId = crypto.randomUUID();
-    const incident = await createIncident({
-      id: incidentId,
-      wolfId: user?.wolfId || 'WOLF-DEV-TEST',
-      sessionSid: '',
-      status: 'initiated',
-      createdAt: new Date().toISOString(),
-      tier: user?.tier || 'Gold',
-      region: user?.region || 'LA',
-    });
+    let incidentId = crypto.randomUUID();
+    let persisted = true;
+    try {
+      const incident = await createIncident({
+        id: incidentId,
+        wolfId: user?.wolfId || 'WOLF-DEV-TEST',
+        sessionSid: '',
+        status: 'initiated',
+        createdAt: new Date().toISOString(),
+        tier: user?.tier || 'Gold',
+        region: user?.region || 'LA',
+      });
+      incidentId = incident.id;
+    } catch (e: unknown) {
+      if (authBypass) {
+        persisted = false;
+        const msg = e instanceof Error ? e.message : String(e);
+        logEvent({ event: 'incident_create_failed_bypass', route: '/api/hotline/activate', error: msg });
+      } else {
+        throw e;
+      }
+    }
 
     try {
       const call = await createDirectCall(toNumber, twimlUrl);
-      await updateIncident(incident.id, { callSid: call.sid });
-      logEvent({ event: 'hotline_activated', route: '/api/hotline/activate', incidentId: incident.id, wolfId: user?.wolfId || 'WOLF-DEV-TEST', callSid: call.sid });
-      return NextResponse.json({ incidentId: incident.id, callSid: call.sid });
+      if (persisted) {
+        await updateIncident(incidentId, { callSid: call.sid });
+      }
+      logEvent({ event: 'hotline_activated', route: '/api/hotline/activate', incidentId, wolfId: user?.wolfId || 'WOLF-DEV-TEST', callSid: call.sid, bypass: authBypass });
+      return NextResponse.json({ incidentId, callSid: call.sid });
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Unknown error';
-      await updateIncident(incident.id, { status: 'resolved', resolvedAt: new Date().toISOString(), statusReason: 'failed' });
-      logEvent({ event: 'call_failed', route: '/api/hotline/activate', incidentId: incident.id, wolfId: user?.wolfId || 'WOLF-DEV-TEST', error: msg }, 'error');
+      if (persisted) {
+        await updateIncident(incidentId, { status: 'resolved', resolvedAt: new Date().toISOString(), statusReason: 'failed' });
+      }
+      logEvent({ event: 'call_failed', route: '/api/hotline/activate', incidentId, wolfId: user?.wolfId || 'WOLF-DEV-TEST', error: msg, bypass: authBypass }, 'error');
       return NextResponse.json({ error: 'Call initiation failed' }, { status: 502 });
     }
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'Unknown error';
+    logEvent({ event: 'hotline_activate_exception', route: '/api/hotline/activate', error: msg }, 'error');
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
