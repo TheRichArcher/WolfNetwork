@@ -166,7 +166,7 @@ export default function Home() {
         .catch(() => {});
     };
     load();
-    timer = window.setInterval(load, 15000);
+    timer = window.setInterval(load, 5000);
     return () => {
       cancelled = true;
       if (timer) window.clearInterval(timer);
