@@ -206,7 +206,16 @@ export default function Home() {
                   <h2 className="text-xl font-bold text-main-text">Crisis Hotline — Hold to Activate</h2>
                   <p className="text-accent mt-1">Your Wolf ID: <span className="font-mono">{wolfId || '—'}</span> | Status: <span className="text-cta">{packStatus}</span></p>
                 </div>
-                {/* Hidden dashboard shortcut: open dedicated hotline page when we add live session view */}
+                {(process.env.NEXT_PUBLIC_APP_ENV !== 'production' || activeSession?.active) && (
+                  <a
+                    href="/status"
+                    className="ml-4 inline-flex items-center gap-2 text-sm text-cta hover:opacity-90 border border-cta/30 rounded px-3 py-1"
+                    aria-label="View live hotline status"
+                  >
+                    Status
+                    <span aria-hidden>↗</span>
+                  </a>
+                )}
               </div>
               {activeSession?.active ? (
                 <div className="mt-4">
