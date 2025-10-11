@@ -22,6 +22,10 @@ export const viewport: Viewport = {
   themeColor: "#1A1A1A",
 };
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const fetchCache = 'force-no-store';
+
 export default function RootLayout({
   children,
 }: Readonly<{
