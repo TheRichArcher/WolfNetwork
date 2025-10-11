@@ -6,6 +6,8 @@ import Layout from '@/components/Layout';
 import CardCarousel from '@/components/CardCarousel';
 import HotlineButton from '@/components/HotlineButton';
 
+export const dynamic = "force-dynamic";
+
 export default function Home() {
   const [loading, setLoading] = useState(true);
   const [userTier, setUserTier] = useState<string | null>(null);
