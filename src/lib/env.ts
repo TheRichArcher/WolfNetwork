@@ -28,10 +28,9 @@ export type Env = {
   DATABASE_URL?: string;
 };
 
+// Only enforce the minimal env required for core server operations.
+// Feature-specific routes (e.g., Stripe billing) should validate their own required envs.
 const requiredInProd: Array<keyof Env> = [
-  'STRIPE_SECRET_KEY',
-  'STRIPE_PRICE_SILVER_ID',
-  'STRIPE_WEBHOOK_SECRET',
   'AIRTABLE_API_KEY',
   'AIRTABLE_BASE_ID',
 ];

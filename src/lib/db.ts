@@ -33,6 +33,7 @@ export type IncidentRecord = {
 };
 
 const USERS_TABLE = process.env.USERS_TABLE_NAME || 'users';
+const USERS_TABLE_ALT = USERS_TABLE === 'users' ? 'Users' : USERS_TABLE === 'Users' ? 'users' : undefined;
 const INCIDENTS_TABLE = process.env.INCIDENTS_TABLE_NAME || 'incidents';
 
 function getBase() {
@@ -89,19 +90,36 @@ export async function upsertUserBasic(params: {
   source?: string; // e.g., waitlist, comped_code:XYZ
   wolfId?: string;
 }): Promise<{ id: string } | null> {
-  try {
+  const attempt = async (tableName: string): Promise<{ id: string } | null> => {
     const base = getBase();
-    const table = base(USERS_TABLE);
+    const table = base(tableName);
     const email = (params.email || '').trim().toLowerCase();
-  const results = email
-      ? await table.select({ filterByFormula: `OR({email} = '${email}', {Email} = '${email}')`, maxRecords: 1 }).firstPage()
+    const results = email
+      ? await table
+          .select({ filterByFormula: `OR({email} = '${email}', {Email} = '${email}')`, maxRecords: 1 })
+          .firstPage()
       : [];
     const fields: FieldSet = {};
-    if (email) fields.email = email;
-    if (typeof params.phoneEncrypted === 'string') fields.phoneEncrypted = params.phoneEncrypted;
-    if (typeof params.status === 'string') { fields.status = params.status; fields['Status'] = params.status; }
-    if (typeof params.source === 'string') fields.source = params.source;
-    if (typeof params.wolfId === 'string') { fields.wolfId = params.wolfId; fields['Invite Code'] = params.wolfId; }
+    if (email) {
+      fields.email = email;
+      fields.Email = email;
+    }
+    if (typeof params.phoneEncrypted === 'string') {
+      fields.phoneEncrypted = params.phoneEncrypted;
+      fields['Phone Encrypted'] = params.phoneEncrypted;
+    }
+    if (typeof params.status === 'string') {
+      fields.status = params.status;
+      fields['Status'] = params.status;
+    }
+    if (typeof params.source === 'string') {
+      fields.source = params.source;
+      fields.Source = params.source;
+    }
+    if (typeof params.wolfId === 'string') {
+      fields.wolfId = params.wolfId;
+      fields['Invite Code'] = params.wolfId;
+    }
 
     if (results.length > 0) {
       const rec = results[0];
@@ -110,8 +128,25 @@ export async function upsertUserBasic(params: {
     }
     const created = await table.create([{ fields }]);
     return { id: created[0].id };
+  };
+
+  try {
+    return await attempt(USERS_TABLE);
   } catch (e: unknown) {
+    const statusCode = extractStatusCode(e);
     const msg = e instanceof Error ? e.message : String(e);
+    // Retry with alternate table casing if table not found
+    if ((statusCode === 404 || /table/i.test(msg)) && USERS_TABLE_ALT) {
+      try {
+        const res = await attempt(USERS_TABLE_ALT);
+        logEvent({ event: 'airtable_table_fallback', op: 'upsert_user_basic', table: USERS_TABLE_ALT });
+        return res;
+      } catch (e2: unknown) {
+        const msg2 = e2 instanceof Error ? e2.message : String(e2);
+        logEvent({ event: 'airtable_error', op: 'upsert_user_basic', table: USERS_TABLE_ALT, error: msg2 });
+        throw e2;
+      }
+    }
     logEvent({ event: 'airtable_error', op: 'upsert_user_basic', table: USERS_TABLE, error: msg });
     throw e;
   }

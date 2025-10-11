@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 import { findUserBySessionEmail } from '@/lib/db';
 
+export const runtime = 'nodejs';
+
 type TeamMember = { category: 'Legal' | 'Medical' | 'PR' | 'Security'; name: string; status: 'Active' | 'Rotating' | 'Offline' };
 
 function buildMockTeam(region: string): TeamMember[] {
@@ -18,9 +20,9 @@ function buildMockTeam(region: string): TeamMember[] {
 export async function GET(req: NextRequest) {
   const token = await getToken({ req });
   const email = typeof token?.email === 'string' ? token.email : undefined;
-  if (!email) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!email) return NextResponse.json({ team: [] });
   const user = await findUserBySessionEmail(email);
-  if (!user) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  if (!user) return NextResponse.json({ team: [] });
   const team = buildMockTeam(user.region || 'LA');
   // Only expose first names or firm aliases
   const redacted = team.map((t) => ({

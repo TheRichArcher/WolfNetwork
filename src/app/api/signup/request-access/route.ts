@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { checkRateLimit } from '@/lib/rateLimit';
 import { upsertUserBasic } from '@/lib/db';
 import { encryptSecret } from '@/lib/crypto';
+import { logEvent } from '@/lib/log';
+
+export const runtime = 'nodejs';
 
 export async function POST(req: NextRequest) {
   try {
@@ -18,7 +21,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
     }
 
-    const phoneEncrypted = rawPhone ? encryptSecret(rawPhone) : undefined;
+    const canEncrypt = !!process.env.ENCRYPTION_KEY;
+    const canDb = !!(process.env.AIRTABLE_API_KEY && process.env.AIRTABLE_BASE_ID);
+
+    const phoneEncrypted = rawPhone && canEncrypt ? encryptSecret(rawPhone) : undefined;
+
+    if (!canDb) {
+      // In development, allow a no-op to avoid 500s when Airtable is not configured.
+      if (process.env.NODE_ENV !== 'production') {
+        logEvent({ event: 'request_access_noop', reason: 'missing_airtable_env', email: rawEmail, hasPhone: !!rawPhone });
+        return NextResponse.json({ ok: true });
+      }
+      return NextResponse.json({ error: 'Server misconfigured' }, { status: 500 });
+    }
+
     await upsertUserBasic({ email: rawEmail || undefined, phoneEncrypted, status: 'pending', source: 'waitlist' });
     return NextResponse.json({ ok: true });
   } catch (e: unknown) {
