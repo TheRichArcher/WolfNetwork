@@ -46,7 +46,7 @@ export default withAuth(function middleware(req: NextRequest) {
   if (!isLoggedIn) {
     const signupUrl = new URL("/signup", nextUrl);
     signupUrl.searchParams.set("next", nextUrl.href);
-    return NextResponse.redirect(signupUrl);
+    return NextResponse.redirect(signupUrl, 302);
   }
 
   const biometricOk = req.cookies.get("biometric_ok")?.value === "1";
