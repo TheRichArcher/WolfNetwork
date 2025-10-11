@@ -1,13 +1,24 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { withAuth } from "next-auth/middleware";
+import { getToken } from "next-auth/jwt";
 
 const geofenceEnabled = process.env.LA_GEOFENCE_ENABLED === "true";
 const laCity = process.env.LA_GEOFENCE_CITY || "Los Angeles";
 
-export default withAuth(function middleware(req: NextRequest) {
+export default withAuth(async function middleware(req: NextRequest) {
   const { nextUrl } = req;
   // Read at runtime; allow in production when explicitly enabled
   const authBypass = process.env.NODE_ENV !== "production" && process.env.AUTH_DEV_BYPASS === "true";
+
+  // Debug: log session status on root hits to verify middleware and auth state
+  if (nextUrl.pathname === "/") {
+    try {
+      const session = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+      console.log("middleware session /", session);
+    } catch (e) {
+      console.log("middleware session error /", (e as Error)?.message);
+    }
+  }
 
   const isAuthRoute =
     nextUrl.pathname.startsWith("/api/auth") ||
