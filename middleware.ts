@@ -14,7 +14,12 @@ export default withAuth(async function middleware(req: NextRequest) {
   if (nextUrl.pathname === "/") {
     try {
       const session = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
-      console.log("middleware session /", session);
+      console.log("middleware match /", { path: nextUrl.pathname });
+      if (session) {
+        console.log("middleware session / present");
+      } else {
+        console.log("middleware session / null");
+      }
     } catch (e) {
       console.log("middleware session error /", (e as Error)?.message);
     }
@@ -55,6 +60,9 @@ export default withAuth(async function middleware(req: NextRequest) {
 
   const isLoggedIn = !!(req as any).nextauth?.token;
   if (!isLoggedIn) {
+    if (nextUrl.pathname === "/") {
+      console.log("redirecting to /signup");
+    }
     const signupUrl = new URL("/signup", nextUrl);
     signupUrl.searchParams.set("next", nextUrl.href);
     return NextResponse.redirect(signupUrl, 302);
