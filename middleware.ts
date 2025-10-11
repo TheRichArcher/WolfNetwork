@@ -44,9 +44,9 @@ export default withAuth(function middleware(req: NextRequest) {
 
   const isLoggedIn = !!(req as any).nextauth?.token;
   if (!isLoggedIn) {
-    const signInUrl = new URL("/api/auth/signin", nextUrl);
-    signInUrl.searchParams.set("callbackUrl", nextUrl.href);
-    return NextResponse.redirect(signInUrl);
+    const signupUrl = new URL("/signup", nextUrl);
+    signupUrl.searchParams.set("next", nextUrl.href);
+    return NextResponse.redirect(signupUrl);
   }
 
   const biometricOk = req.cookies.get("biometric_ok")?.value === "1";
