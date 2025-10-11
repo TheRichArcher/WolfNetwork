@@ -93,24 +93,22 @@ export async function upsertUserBasic(params: {
     const base = getBase();
     const table = base(USERS_TABLE);
     const email = (params.email || '').trim().toLowerCase();
-    const results = email
+  const results = email
       ? await table.select({ filterByFormula: `OR({email} = '${email}', {Email} = '${email}')`, maxRecords: 1 }).firstPage()
       : [];
-    const fields: Record<string, unknown> = {};
+    const fields: FieldSet = {};
     if (email) fields.email = email;
     if (typeof params.phoneEncrypted === 'string') fields.phoneEncrypted = params.phoneEncrypted;
-    if (typeof params.status === 'string') { fields.status = params.status; (fields as any).Status = params.status; }
+    if (typeof params.status === 'string') { fields.status = params.status; fields['Status'] = params.status; }
     if (typeof params.source === 'string') fields.source = params.source;
-    if (typeof params.wolfId === 'string') { fields.wolfId = params.wolfId; (fields as any)['Invite Code'] = params.wolfId; }
+    if (typeof params.wolfId === 'string') { fields.wolfId = params.wolfId; fields['Invite Code'] = params.wolfId; }
 
     if (results.length > 0) {
       const rec = results[0];
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await table.update([{ id: rec.id, fields } as unknown as any]);
+      await table.update([{ id: rec.id, fields }]);
       return { id: rec.id };
     }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const created = await table.create([{ fields } as unknown as any]);
+    const created = await table.create([{ fields }]);
     return { id: created[0].id };
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
@@ -199,7 +197,7 @@ export async function updateIncident(id: string, fields: Partial<IncidentRecord>
     const base = getBase();
     const table = base(INCIDENTS_TABLE);
     // Airtable typings are lax; project only known fields to avoid any
-    const projected: Record<string, unknown> = {};
+    const projected: FieldSet = {};
     if (typeof fields.status === 'string') { projected.status = fields.status; projected.Status = fields.status; }
     if (typeof fields.resolvedAt === 'string') { projected.resolvedAt = fields.resolvedAt; projected.ResolvedAt = fields.resolvedAt; }
     if (typeof fields.partnerId === 'string') projected.partnerId = fields.partnerId;
@@ -219,8 +217,7 @@ export async function updateIncident(id: string, fields: Partial<IncidentRecord>
       if (matches.length === 0) throw new Error(`Incident not found for custom id ${id}`);
       recordId = matches[0].id;
     }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await table.update([{ id: recordId, fields: projected } as unknown as any]);
+    await table.update([{ id: recordId, fields: projected }]);
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
     const statusCode = extractStatusCode(e);
