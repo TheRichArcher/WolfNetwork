@@ -15,6 +15,9 @@ export default withAuth(function middleware(req: NextRequest) {
     nextUrl.pathname.startsWith("/api/hotline/") ||
     // Legacy activate-hotline route should be allowed (compat)
     nextUrl.pathname === "/api/activate-hotline" ||
+    // Public signup routes (UI + APIs)
+    nextUrl.pathname === "/signup" ||
+    nextUrl.pathname.startsWith("/api/signup/") ||
     nextUrl.pathname.startsWith("/api/twilio/") ||
     nextUrl.pathname === "/blocked" ||
     nextUrl.pathname === "/biometric" ||

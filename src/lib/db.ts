@@ -81,6 +81,69 @@ export async function findUserBySessionEmail(email: string): Promise<UserRecord 
   }
 }
 
+// Upsert or create a basic user record for waitlist/invite tracking.
+export async function upsertUserBasic(params: {
+  email?: string;
+  phoneEncrypted?: string;
+  status?: 'pending' | 'approved' | 'active';
+  source?: string; // e.g., waitlist, comped_code:XYZ
+  wolfId?: string;
+}): Promise<{ id: string } | null> {
+  try {
+    const base = getBase();
+    const table = base(USERS_TABLE);
+    const email = (params.email || '').trim().toLowerCase();
+    const results = email
+      ? await table.select({ filterByFormula: `OR({email} = '${email}', {Email} = '${email}')`, maxRecords: 1 }).firstPage()
+      : [];
+    const fields: Record<string, unknown> = {};
+    if (email) fields.email = email;
+    if (typeof params.phoneEncrypted === 'string') fields.phoneEncrypted = params.phoneEncrypted;
+    if (typeof params.status === 'string') { fields.status = params.status; (fields as any).Status = params.status; }
+    if (typeof params.source === 'string') fields.source = params.source;
+    if (typeof params.wolfId === 'string') { fields.wolfId = params.wolfId; (fields as any)['Invite Code'] = params.wolfId; }
+
+    if (results.length > 0) {
+      const rec = results[0];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await table.update([{ id: rec.id, fields } as unknown as any]);
+      return { id: rec.id };
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const created = await table.create([{ fields } as unknown as any]);
+    return { id: created[0].id };
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    logEvent({ event: 'airtable_error', op: 'upsert_user_basic', table: USERS_TABLE, error: msg });
+    throw e;
+  }
+}
+
+// Validate a comped code against an Airtable table ('codes' by default) and return metadata
+export async function validateCompedCode(code: string): Promise<{ valid: boolean; wolfId?: string; tier?: UserRecord['tier'] }>{
+  const TABLE = process.env.CODES_TABLE_NAME || 'codes';
+  try {
+    const base = getBase();
+    const table = base(TABLE);
+    const value = code.trim();
+    if (!value) return { valid: false };
+    const records = await table
+      .select({ filterByFormula: `OR({code} = '${value}', {Code} = '${value}')`, maxRecords: 1 })
+      .firstPage();
+    if (records.length === 0) return { valid: false };
+    const r = records[0];
+    const disabled = !!getField<boolean>(r, ['disabled', 'Disabled'], false);
+    if (disabled) return { valid: false };
+    const wolfId = (getField<string>(r, ['wolfId', 'WolfID', 'Invite Code']) as string) || undefined;
+    const tier = (getField<UserRecord['tier']>(r, ['tier', 'Tier']) as UserRecord['tier']) || undefined;
+    return { valid: true, wolfId, tier };
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    logEvent({ event: 'airtable_error', op: 'validate_comped_code', table: process.env.CODES_TABLE_NAME || 'codes', error: msg });
+    throw e;
+  }
+}
+
 export async function createIncident(incident: IncidentRecord): Promise<IncidentRecord> {
   try {
     const base = getBase();
