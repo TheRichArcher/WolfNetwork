@@ -32,10 +32,10 @@ const handler = NextAuth({
         if (!env.AIRTABLE_API_KEY || !env.AIRTABLE_BASE_ID) return false;
         const base = new Airtable({ apiKey: env.AIRTABLE_API_KEY }).base(env.AIRTABLE_BASE_ID);
         const users = base(process.env.USERS_TABLE_NAME || 'users');
-        const records = await users.select({ filterByFormula: `OR({email} = '${email}', {Email} = '${email}')`, maxRecords: 1 }).firstPage();
+        const records = await users.select({ filterByFormula: `{email} = '${email}'`, maxRecords: 1 }).firstPage();
         if (records.length === 0) return false;
         const r = records[0];
-        const status = (r.get('status') as string) || (r.get('Status') as string) || '';
+        const status = (r.get('status') as string) || '';
         const approved = /approved|active/i.test(status);
         return approved;
       } catch {

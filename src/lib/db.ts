@@ -62,17 +62,17 @@ export async function findUserBySessionEmail(email: string): Promise<UserRecord 
     const base = getBase();
     const table = base(USERS_TABLE);
     const records = await table
-      .select({ filterByFormula: `OR({email} = '${email}', {Email} = '${email}')`, maxRecords: 1 })
+      .select({ filterByFormula: `{email} = '${email}'`, maxRecords: 1 })
       .firstPage();
     if (records.length === 0) return null;
     const r = records[0];
     return {
-      id: (getField<string>(r, ['id', 'ID']) as string) || r.id,
-      wolfId: (getField<string>(r, ['wolfId', 'Invite Code', 'inviteCode']) as string) || '',
-      phoneEncrypted: (getField<string>(r, ['phoneEncrypted', 'Phone Encrypted', 'phoneencrypted']) as string) || '',
-      tier: (getField<UserRecord['tier']>(r, ['tier', 'Tier']) as UserRecord['tier']) || 'Silver',
-      region: (getField<string>(r, ['region', 'Region']) as string) || 'LA',
-      createdAt: (getField<string>(r, ['createdAt', 'CreatedAt', 'Created At']) as string) || new Date().toISOString(),
+      id: (r.get('id') as string) || r.id,
+      wolfId: (r.get('wolfId') as string) || '',
+      phoneEncrypted: (r.get('phoneEncrypted') as string) || '',
+      tier: (r.get('tier') as UserRecord['tier']) || 'Silver',
+      region: (r.get('region') as string) || 'LA',
+      createdAt: (r.get('createdAt') as string) || new Date().toISOString(),
     };
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
@@ -105,19 +105,15 @@ export async function upsertUserBasic(params: {
     }
     if (typeof params.phoneEncrypted === 'string') {
       fields.phoneEncrypted = params.phoneEncrypted;
-      fields['Phone Encrypted'] = params.phoneEncrypted;
     }
     if (typeof params.status === 'string') {
       fields.status = params.status;
-      fields['Status'] = params.status;
     }
     if (typeof params.source === 'string') {
       fields.source = params.source;
-      fields.Source = params.source;
     }
     if (typeof params.wolfId === 'string') {
       fields.wolfId = params.wolfId;
-      fields['Invite Code'] = params.wolfId;
     }
 
     if (results.length > 0) {
@@ -160,14 +156,14 @@ export async function validateCompedCode(code: string): Promise<{ valid: boolean
     const value = code.trim();
     if (!value) return { valid: false };
     const records = await table
-      .select({ filterByFormula: `OR({code} = '${value}', {Code} = '${value}')`, maxRecords: 1 })
+      .select({ filterByFormula: `{code} = '${value}'`, maxRecords: 1 })
       .firstPage();
     if (records.length === 0) return { valid: false };
     const r = records[0];
     const disabled = !!getField<boolean>(r, ['disabled', 'Disabled'], false);
     if (disabled) return { valid: false };
-    const wolfId = (getField<string>(r, ['wolfId', 'WolfID', 'Invite Code']) as string) || undefined;
-    const tier = (getField<UserRecord['tier']>(r, ['tier', 'Tier']) as UserRecord['tier']) || undefined;
+    const wolfId = (r.get('wolfId') as string) || undefined;
+    const tier = (r.get('tier') as UserRecord['tier']) || undefined;
     return { valid: true, wolfId, tier };
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
@@ -206,17 +202,17 @@ export async function createIncident(incident: IncidentRecord): Promise<Incident
     ]);
     const r = created[0];
     return {
-      id: (getField<string>(r, ['id', 'ID']) as string) || incident.id,
-      wolfId: (getField<string>(r, ['wolfId', 'Invite Code']) as string) || incident.wolfId,
-      sessionSid: (getField<string>(r, ['sessionSid', 'SessionSid']) as string) || '',
-      status: (getField<IncidentRecord['status']>(r, ['status', 'Status']) as IncidentRecord['status']) || 'initiated',
-      type: (getField<IncidentRecord['type']>(r, ['type', 'Type']) as IncidentRecord['type']) || 'unknown',
-      partnerId: (getField<string>(r, ['partnerId', 'PartnerId']) as string) || undefined,
-      operatorId: (getField<string>(r, ['operatorId', 'OperatorId']) as string) || undefined,
-      createdAt: (getField<string>(r, ['createdAt', 'CreatedAt']) as string) || incident.createdAt,
-      resolvedAt: (getField<string>(r, ['resolvedAt', 'ResolvedAt']) as string) || undefined,
-      tier: (getField<IncidentRecord['tier']>(r, ['tier', 'Tier']) as IncidentRecord['tier']) || undefined,
-      region: (getField<IncidentRecord['region']>(r, ['region', 'Region']) as IncidentRecord['region']) || undefined,
+      id: (r.get('id') as string) || incident.id,
+      wolfId: (r.get('wolfId') as string) || incident.wolfId,
+      sessionSid: (r.get('sessionSid') as string) || '',
+      status: (r.get('status') as IncidentRecord['status']) || 'initiated',
+      type: (r.get('type') as IncidentRecord['type']) || 'unknown',
+      partnerId: (r.get('partnerId') as string) || undefined,
+      operatorId: (r.get('operatorId') as string) || undefined,
+      createdAt: (r.get('createdAt') as string) || incident.createdAt,
+      resolvedAt: (r.get('resolvedAt') as string) || undefined,
+      tier: (r.get('tier') as IncidentRecord['tier']) || undefined,
+      region: (r.get('region') as IncidentRecord['region']) || undefined,
     };
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
@@ -232,13 +228,13 @@ export async function updateIncident(id: string, fields: Partial<IncidentRecord>
     const table = base(INCIDENTS_TABLE);
     // Airtable typings are lax; project only known fields to avoid any
     const projected: FieldSet = {};
-    if (typeof fields.status === 'string') { projected.status = fields.status; projected.Status = fields.status; }
-    if (typeof fields.resolvedAt === 'string') { projected.resolvedAt = fields.resolvedAt; projected.ResolvedAt = fields.resolvedAt; }
+    if (typeof fields.status === 'string') { projected.status = fields.status; }
+    if (typeof fields.resolvedAt === 'string') { projected.resolvedAt = fields.resolvedAt; }
     if (typeof fields.partnerId === 'string') projected.partnerId = fields.partnerId;
     if (typeof fields.operatorId === 'string') projected.operatorId = fields.operatorId;
-    if (typeof fields.sessionSid === 'string') { projected.sessionSid = fields.sessionSid; projected.SessionSid = fields.sessionSid; }
-    if (typeof fields.callSid === 'string') { projected.callSid = fields.callSid; projected.CallSid = fields.callSid; }
-    if (typeof fields.activatedAt === 'string') { projected.activatedAt = fields.activatedAt; projected.ActivatedAt = fields.activatedAt; }
+    if (typeof fields.sessionSid === 'string') { projected.sessionSid = fields.sessionSid; }
+    if (typeof fields.callSid === 'string') { projected.callSid = fields.callSid; }
+    if (typeof fields.activatedAt === 'string') { projected.activatedAt = fields.activatedAt; }
     if (typeof fields.statusReason === 'string') projected.statusReason = fields.statusReason;
     if (typeof fields.twilioStatus === 'string') projected.twilioStatus = fields.twilioStatus;
     if (typeof fields.durationSeconds === 'number') projected.durationSeconds = fields.durationSeconds;
@@ -246,7 +242,7 @@ export async function updateIncident(id: string, fields: Partial<IncidentRecord>
     let recordId = id;
     if (!/^rec[a-zA-Z0-9]{14}$/i.test(id)) {
       const matches = await table
-        .select({ filterByFormula: `OR({id} = '${id}', {ID} = '${id}')`, maxRecords: 1 })
+        .select({ filterByFormula: `{id} = '${id}'`, maxRecords: 1 })
         .firstPage();
       if (matches.length === 0) throw new Error(`Incident not found for custom id ${id}`);
       recordId = matches[0].id;
@@ -342,7 +338,7 @@ export async function findLastResolvedIncidentForWolfId(wolfId: string): Promise
     const table = base(INCIDENTS_TABLE);
     const records = await table
       .select({
-        filterByFormula: `AND(OR({wolfId} = '${wolfId}', {Invite Code} = '${wolfId}'), OR({status} = 'resolved', {Status} = 'resolved'))`,
+        filterByFormula: `AND({wolfId} = '${wolfId}', {status} = 'resolved')`,
         sort: [{ field: 'resolvedAt', direction: 'desc' }],
         maxRecords: 1,
       })

@@ -23,7 +23,7 @@ export async function getActiveIncidentForEmail(email: string): Promise<Incident
     const table = base('incidents');
     const records = await table
       .select({
-        filterByFormula: `AND(OR({wolfId} = '${user.wolfId}', {Invite Code} = '${user.wolfId}'), OR({status} = 'initiated', {status} = 'active', {Status} = 'initiated', {Status} = 'active'))`,
+        filterByFormula: `AND({wolfId} = '${user.wolfId}', OR({status} = 'initiated', {status} = 'active'))`,
         sort: [{ field: 'createdAt', direction: 'desc' }],
         maxRecords: 1,
       })
@@ -61,7 +61,7 @@ export async function getActiveIncidentForWolfId(wolfId: string): Promise<Incide
   const table = base('incidents');
   const records = await table
     .select({
-      filterByFormula: `AND(OR({wolfId} = '${wolfId}', {Invite Code} = '${wolfId}'), OR({status} = 'initiated', {status} = 'active', {Status} = 'initiated', {Status} = 'active'))`,
+      filterByFormula: `AND({wolfId} = '${wolfId}', OR({status} = 'initiated', {status} = 'active'))`,
       sort: [{ field: 'createdAt', direction: 'desc' }],
       maxRecords: 1,
     })
