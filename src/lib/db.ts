@@ -96,13 +96,12 @@ export async function upsertUserBasic(params: {
     const email = (params.email || '').trim().toLowerCase();
     const results = email
       ? await table
-          .select({ filterByFormula: `OR({email} = '${email}', {Email} = '${email}')`, maxRecords: 1 })
+          .select({ filterByFormula: `{email} = '${email}'`, maxRecords: 1 })
           .firstPage()
       : [];
     const fields: FieldSet = {};
     if (email) {
       fields.email = email;
-      fields.Email = email;
     }
     if (typeof params.phoneEncrypted === 'string') {
       fields.phoneEncrypted = params.phoneEncrypted;
