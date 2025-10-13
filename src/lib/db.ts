@@ -89,6 +89,7 @@ export async function upsertUserBasic(params: {
   status?: 'pending' | 'approved' | 'active';
   source?: string; // e.g., waitlist, comped_code:XYZ
   wolfId?: string;
+  tier?: UserRecord['tier'];
 }): Promise<{ id: string } | null> {
   const attempt = async (tableName: string): Promise<{ id: string } | null> => {
     const base = getBase();
@@ -114,6 +115,9 @@ export async function upsertUserBasic(params: {
     }
     if (typeof params.wolfId === 'string') {
       fields.wolfId = params.wolfId;
+    }
+    if (typeof params.tier === 'string') {
+      fields.tier = params.tier;
     }
 
     if (results.length > 0) {
@@ -162,8 +166,8 @@ export async function validateCompedCode(code: string): Promise<{ valid: boolean
     const r = records[0];
     const disabled = !!getField<boolean>(r, ['disabled', 'Disabled'], false);
     if (disabled) return { valid: false };
-    const wolfId = (r.get('wolfId') as string) || undefined;
-    const tier = (r.get('tier') as UserRecord['tier']) || undefined;
+    const wolfId = getField<string>(r, ['wolfId', 'WolfId', 'Invite Code']);
+    const tier = getField<UserRecord['tier']>(r, ['tier', 'Tier']);
     return { valid: true, wolfId, tier };
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);

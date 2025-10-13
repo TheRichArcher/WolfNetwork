@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { checkRateLimit } from '@/lib/rateLimit';
 import { upsertUserBasic, validateCompedCode } from '@/lib/db';
+import { logEvent } from '@/lib/log';
 
 export async function POST(req: NextRequest) {
   try {
@@ -22,12 +23,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ valid: false, error: 'Invalid code' }, { status: 200 });
     }
 
+    if (!res.wolfId || !res.tier) {
+      logEvent({ event: 'comped_code_metadata_missing', code: rawCode, hasWolfId: !!res.wolfId, hasTier: !!res.tier });
+    }
+
     // Mark user as approved and attribute source
     await upsertUserBasic({
       email: rawEmail,
       status: 'approved',
       source: `comped_code:${rawCode}`,
       wolfId: res.wolfId,
+      tier: res.tier,
     });
 
     return NextResponse.json({ valid: true, next: '/api/auth/signin' });
