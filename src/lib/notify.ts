@@ -13,6 +13,22 @@ export type IncidentSummary = {
 
 const DEFAULT_WEBHOOK = 'https://discord.com/api/webhooks/1427704694200864800/A7bgIk2w2JQdhFYdLkMEU45xrH4AYLKjwk6DeEHEI7YGaR29VuMQWQew1Sfmh7G-sVDg';
 
+function resolveBaseUrl(explicit?: string): string | undefined {
+  const fromEnv = getEnv();
+  const candidates = [
+    explicit,
+    fromEnv.PUBLIC_BASE_URL,
+    process.env.RENDER_EXTERNAL_URL,
+    process.env.NEXTAUTH_URL,
+    process.env.SITE_URL,
+    process.env.URL,
+    process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined,
+  ].filter(Boolean) as string[];
+  // Ensure we return an absolute https URL
+  const first = candidates.find((u) => /^https?:\/\//i.test(u));
+  return first;
+}
+
 function buildCreationEmbed(incident: IncidentSummary, presence?: Presence, viewUrl?: string) {
   const fields: Array<{ name: string; value: string; inline?: boolean }> = [];
   fields.push({ name: 'Wolf ID', value: incident.wolfId, inline: true });
@@ -53,9 +69,10 @@ export async function notifyDiscordOnIncident(params: {
 }): Promise<void> {
   const env = getEnv();
   const webhook = (env.DISCORD_WEBHOOK_URL || DEFAULT_WEBHOOK).trim();
-  const baseUrl = params.baseUrl || env.PUBLIC_BASE_URL;
+  const baseUrl = resolveBaseUrl(params.baseUrl);
   const viewUrl = baseUrl ? `${baseUrl}/status/${encodeURIComponent(params.incident.id)}` : undefined;
-  const body = buildCreationEmbed(params.incident, params.presence, viewUrl);
+  const embed = buildCreationEmbed(params.incident, params.presence, viewUrl);
+  const body = viewUrl ? { ...embed, content: viewUrl } : embed;
   try {
     const resp = await fetch(webhook, {
       method: 'POST',
@@ -105,7 +122,7 @@ export async function notifyDiscordOnIncidentResolved(params: {
 }): Promise<void> {
   const env = getEnv();
   const webhook = (env.DISCORD_WEBHOOK_URL || DEFAULT_WEBHOOK).trim();
-  const baseUrl = params.baseUrl || env.PUBLIC_BASE_URL;
+  const baseUrl = resolveBaseUrl(params.baseUrl);
   if (!webhook) {
     logEvent({ event: 'notify_skipped', reason: 'missing_webhook', channel: 'discord', incidentId: params.incident.id });
     return;
@@ -123,7 +140,7 @@ export async function notifyDiscordOnIncidentResolved(params: {
   }
   const viewUrl = baseUrl ? `${baseUrl}/status/${encodeURIComponent(params.incident.id)}` : undefined;
   const description = viewUrl ? `[View Incident](${viewUrl})` : undefined;
-  const body = {
+  const embed = {
     embeds: [
       {
         title: '✅ Incident Update',
@@ -135,6 +152,7 @@ export async function notifyDiscordOnIncidentResolved(params: {
       },
     ],
   };
+  const body = viewUrl ? { ...embed, content: viewUrl } : embed;
   try {
     const resp = await fetch(webhook, {
       method: 'POST',
