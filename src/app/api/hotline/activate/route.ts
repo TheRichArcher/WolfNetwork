@@ -93,7 +93,7 @@ export async function POST(req: NextRequest) {
       });
     } catch (e) {
       if (persisted) {
-        await updateIncident(incidentId, { status: 'failed' });
+        await updateIncident(incidentId, { status: 'abandoned', statusReason: 'call_initiation_failed', twilioStatus: 'failed' });
       }
       throw e; // Re-throw to be caught by the outer handler
     }
