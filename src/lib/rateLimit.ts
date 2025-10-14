@@ -13,12 +13,22 @@ export async function checkRateLimit(key: string, maxPerMinute = 4): Promise<boo
   const keyWithMinute = `${key}:${Math.floor(now / windowMs)}`;
 
   try {
-    const multi = redis.multi();
-    multi.incr(keyWithMinute);
-    multi.expire(keyWithMinute, 60); // Expire after 1 minute
-    const [count] = await multi.exec() as [number, any];
+    const results = await redis.multi().incr(keyWithMinute).expire(keyWithMinute, 60).exec();
 
-    if (count > maxPerMinute) {
+    if (!results) {
+      console.error('Redis transaction failed in rate limiter.');
+      return checkRateLimitInMemory(key, maxPerMinute);
+    }
+
+    const [incrError, count] = results[0];
+    const [expireError] = results[1];
+
+    if (incrError || expireError) {
+      console.error('Redis command failed in rate limiter:', incrError || expireError);
+      return checkRateLimitInMemory(key, maxPerMinute);
+    }
+
+    if (typeof count === 'number' && count > maxPerMinute) {
       return false;
     }
   } catch (error) {
