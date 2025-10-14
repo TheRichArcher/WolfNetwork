@@ -8,7 +8,6 @@ import { logEvent } from '@/lib/log';
 import { checkRateLimit } from '@/lib/rateLimit';
 import { notifyDiscordOnIncident } from '@/lib/notify';
 import { getPresenceForRegion } from '@/lib/incidents';
-import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(req: NextRequest) {
   try {
