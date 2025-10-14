@@ -27,6 +27,9 @@ export type Env = {
   ENCRYPTION_KEY?: string;
   DATABASE_URL?: string;
   DISCORD_WEBHOOK_URL?: string;
+  AUTH_DEV_BYPASS?: string;
+  DEV_CALLER_E164?: string;
+  REDIS_URL?: string;
 };
 
 // Only enforce the minimal env required for core server operations.
@@ -66,10 +69,19 @@ export function getEnv(): Env {
     ENCRYPTION_KEY: process.env.ENCRYPTION_KEY,
     DATABASE_URL: process.env.DATABASE_URL,
     DISCORD_WEBHOOK_URL: process.env.DISCORD_WEBHOOK_URL,
+    AUTH_DEV_BYPASS: process.env.AUTH_DEV_BYPASS,
+    DEV_CALLER_E164: process.env.DEV_CALLER_E164,
+    REDIS_URL: process.env.REDIS_URL,
   };
 
   const isProd = process.env.NODE_ENV === 'production';
   if (isProd) {
+    if (env.AUTH_DEV_BYPASS === 'true') {
+      throw new Error('AUTH_DEV_BYPASS cannot be true in production');
+    }
+    if (env.DEV_CALLER_E164) {
+      throw new Error('DEV_CALLER_E164 cannot be set in production');
+    }
     const missing = requiredInProd.filter((key) => !env[key]);
     if (missing.length > 0) {
       // Throwing early helps catch misconfigurations in CI/deploys

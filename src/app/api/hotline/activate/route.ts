@@ -12,11 +12,17 @@ import { z } from 'zod';
 import retry from 'p-retry';
 
 export async function POST(req: NextRequest) {
-  // Validate request body (ensures no unexpected data)
-  const bodySchema = z.object({});
-  await bodySchema.parseAsync(await req.json().catch(() => ({})));
-
   try {
+    // Validate request body
+    const bodySchema = z.object({});
+    let body;
+    try {
+      body = await req.json();
+    } catch (e) {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
+    await bodySchema.parseAsync(body);
+
     // Authenticate user via session token
     const token = await getToken({ req });
     const email = typeof token?.email === 'string' ? token.email : undefined;
@@ -25,7 +31,7 @@ export async function POST(req: NextRequest) {
     if (!email && !authBypass) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     // Apply rate limiting to prevent abuse
-    if (!checkRateLimit(`hotline:activate:${email}`, 4)) {
+    if (!await checkRateLimit(`hotline:activate:${email}`, 4)) {
       return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
     }
 
@@ -75,14 +81,22 @@ export async function POST(req: NextRequest) {
     }
 
     // Initiate Twilio call with retries for reliability
-    const call = await retry(() => createDirectCall(
-      toNumber,
-      twimlUrl,
-    ), {
-      retries: 3, // Retry up to 3 times on transient errors
-      minTimeout: 1000,
-      maxTimeout: 5000,
-    });
+    let call;
+    try {
+      call = await retry(() => createDirectCall(
+        toNumber,
+        twimlUrl,
+      ), {
+        retries: 3, // Retry up to 3 times on transient errors
+        minTimeout: 1000,
+        maxTimeout: 5000,
+      });
+    } catch (e) {
+      if (persisted) {
+        await updateIncident(incidentId, { status: 'failed' });
+      }
+      throw e; // Re-throw to be caught by the outer handler
+    }
 
     if (persisted) {
       await updateIncident(incidentId, { callSid: call.sid });

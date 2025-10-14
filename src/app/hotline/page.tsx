@@ -56,7 +56,7 @@ const HotlinePage = () => {
     setIsActivating(true);
     setError(null);
     try {
-      const resp = await fetch('/api/activate-hotline', { method: 'POST' });
+      const resp = await fetch('/api/hotline/activate', { method: 'POST' });
       const data = await resp.json();
       if (!resp.ok) throw new Error(data?.error || 'Activation failed');
       if (data?.incidentId) setIncidentId(data.incidentId);
