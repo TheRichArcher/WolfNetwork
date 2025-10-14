@@ -34,6 +34,10 @@ export async function POST(req: NextRequest) {
 
     const callSid = params.get('CallSid') || '';
     const callStatus = (params.get('CallStatus') || '').toLowerCase();
+    const from = params.get('From') || '';
+    const to = params.get('To') || '';
+    const dur = params.get('CallDuration') || '';
+    logEvent({ event: 'call_status_raw', route: '/api/twilio/call-status', callSid, callStatus, from, to, duration: dur });
     if (!callSid) return NextResponse.json({ ok: true });
 
     const incident = await findIncidentByCallSid(callSid);

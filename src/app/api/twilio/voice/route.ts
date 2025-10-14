@@ -7,7 +7,8 @@ export async function GET() {
   const operator = getOperatorNumber();
 
   if (!operator) {
-    const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<Response>\n  <Say>Hotline activated. Help is on the way.</Say>\n  <Hangup/>\n</Response>`;
+    // If no operator configured, keep the call alive briefly and then end, to avoid immediate hangup bounce
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<Response>\n  <Pause length="2"/>\n  <Say>Hotline activated. Help is on the way.</Say>\n  <Pause length="1"/>\n  <Hangup/>\n</Response>`;
     return new NextResponse(xml, { headers: { 'Content-Type': 'text/xml' } });
   }
 
@@ -20,7 +21,7 @@ export async function POST() {
   const operator = getOperatorNumber();
 
   if (!operator) {
-    const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<Response>\n  <Say>Hotline activated. Help is on the way.</Say>\n  <Hangup/>\n</Response>`;
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<Response>\n  <Pause length="2"/>\n  <Say>Hotline activated. Help is on the way.</Say>\n  <Pause length="1"/>\n  <Hangup/>\n</Response>`;
     return new NextResponse(xml, { headers: { 'Content-Type': 'text/xml' } });
   }
 

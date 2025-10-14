@@ -2,6 +2,20 @@ import { getEnv } from './env';
 
 export type CreateCallResult = { sid: string; status?: string };
 
+function resolveBaseUrl(): string | undefined {
+  const env = getEnv();
+  const candidates = [
+    env.PUBLIC_BASE_URL,
+    process.env.RENDER_EXTERNAL_URL,
+    process.env.NEXTAUTH_URL,
+    process.env.SITE_URL,
+    process.env.URL,
+    process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined,
+  ].filter(Boolean) as string[];
+  const first = candidates.find((u) => /^https?:\/\//i.test(u));
+  return first;
+}
+
 export async function createDirectCall(toE164: string, twimlUrl: string): Promise<CreateCallResult> {
   const env = getEnv();
   const accountSid = env.TWILIO_ACCOUNT_SID || '';
@@ -10,8 +24,9 @@ export async function createDirectCall(toE164: string, twimlUrl: string): Promis
   if (!accountSid || !authToken || !fromNumber) throw new Error('Twilio env vars missing');
   const authHeader = Buffer.from(`${accountSid}:${authToken}`).toString('base64');
   const body = new URLSearchParams({ To: toE164, From: fromNumber, Url: twimlUrl, Method: 'POST' });
-  // Wire Twilio status callbacks when PUBLIC_BASE_URL is available
-  const callbackUrl = env.PUBLIC_BASE_URL ? `${env.PUBLIC_BASE_URL}/api/twilio/call-status` : '';
+  // Wire Twilio status callbacks when a base URL is available
+  const baseUrl = resolveBaseUrl();
+  const callbackUrl = baseUrl ? `${baseUrl}/api/twilio/call-status` : '';
   if (callbackUrl) {
     body.set('StatusCallback', callbackUrl);
     body.set('StatusCallbackMethod', 'POST');
