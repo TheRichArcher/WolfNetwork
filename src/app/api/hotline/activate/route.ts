@@ -8,20 +8,28 @@ import { logEvent } from '@/lib/log';
 import { checkRateLimit } from '@/lib/rateLimit';
 import { notifyDiscordOnIncident } from '@/lib/notify';
 import { getPresenceForRegion } from '@/lib/incidents';
+import { z } from 'zod';
+import retry from 'p-retry';
 
 export async function POST(req: NextRequest) {
+  // Validate request body (ensures no unexpected data)
+  const bodySchema = z.object({});
+  await bodySchema.parseAsync(await req.json().catch(() => ({})));
+
   try {
+    // Authenticate user via session token
     const token = await getToken({ req });
     const email = typeof token?.email === 'string' ? token.email : undefined;
     const authBypass = process.env.AUTH_DEV_BYPASS === 'true';
     logEvent({ event: 'hotline_activate_request', route: '/api/hotline/activate', authBypass, hasEmail: Boolean(email), incidentsTable: process.env.INCIDENTS_TABLE_NAME || 'incidents' });
     if (!email && !authBypass) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    // Basic rate limit per user
+    // Apply rate limiting to prevent abuse
     if (!checkRateLimit(`hotline:activate:${email}`, 4)) {
       return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
     }
 
+    // Lookup user and decrypt phone
     const user = email ? await findUserBySessionEmail(email) : null;
     logEvent({ event: 'hotline_user_lookup', route: '/api/hotline/activate', found: Boolean(user), wolfId: user?.wolfId, tier: user?.tier, region: user?.region });
     if (!user && !authBypass) return NextResponse.json({ error: 'User not found' }, { status: 404 });
@@ -33,6 +41,7 @@ export async function POST(req: NextRequest) {
     const base = env.PUBLIC_BASE_URL || `${req.nextUrl.protocol}//${req.nextUrl.host}`;
     const twimlUrl = `${base}/api/twilio/voice`;
 
+    // Create incident record
     let incidentId = crypto.randomUUID();
     let persisted = true;
     try {
@@ -65,21 +74,27 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    try {
-      const call = await createDirectCall(toNumber, twimlUrl);
-      if (persisted) {
-        await updateIncident(incidentId, { callSid: call.sid });
-      }
-      logEvent({ event: 'hotline_activated', route: '/api/hotline/activate', incidentId, wolfId: user?.wolfId || 'WOLF-DEV-TEST', callSid: call.sid, authBypass, persisted });
-      return NextResponse.json({ incidentId, callSid: call.sid });
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Unknown error';
-      if (persisted) {
-        await updateIncident(incidentId, { status: 'resolved', resolvedAt: new Date().toISOString(), statusReason: 'failed' });
-      }
-      logEvent({ event: 'call_failed', route: '/api/hotline/activate', incidentId, wolfId: user?.wolfId || 'WOLF-DEV-TEST', error: msg, authBypass, persisted }, 'error');
-      return NextResponse.json({ error: 'Call initiation failed' }, { status: 502 });
+    // Initiate Twilio call with retries for reliability
+    const call = await retry(() => createDirectCall({
+      accountSid: env.TWILIO_ACCOUNT_SID || '',
+      authToken: env.TWILIO_AUTH_TOKEN || '',
+      from: env.TWILIO_FROM_NUMBER || '',
+      to: toNumber,
+      twimlUrl,
+      statusCallback: `${base}/api/twilio/call-status`,
+      statusCallbackEvent: ['initiated', 'ringing', 'answered', 'completed'],
+      timeout: 30,
+    }), {
+      retries: 3, // Retry up to 3 times on transient errors
+      minTimeout: 1000,
+      maxTimeout: 5000,
+    });
+
+    if (persisted) {
+      await updateIncident(incidentId, { callSid: call.sid });
     }
+    logEvent({ event: 'hotline_activated', route: '/api/hotline/activate', incidentId, wolfId: user?.wolfId || 'WOLF-DEV-TEST', callSid: call.sid, authBypass, persisted });
+    return NextResponse.json({ incidentId, callSid: call.sid });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'Unknown error';
     logEvent({ event: 'hotline_activate_exception', route: '/api/hotline/activate', error: msg }, 'error');

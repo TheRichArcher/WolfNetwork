@@ -170,6 +170,7 @@ const HotlinePage = () => {
           onPointerLeave={endPress}
           onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') startPress(); }}
           onKeyUp={endPress}
+          aria-label="Activate Crisis Hotline (long press)"
         />
         <p className="mt-4 text-sm text-accent" aria-live="polite">{status}</p>
         {error && <p className="mt-2 text-sm text-red-400" role="alert">{error}</p>}
