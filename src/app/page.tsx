@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import SplashScreen from '@/components/SplashScreen';
 import Layout from '@/components/Layout';
 import CardCarousel from '@/components/CardCarousel';
@@ -96,7 +97,7 @@ export default function Home() {
         const j = await r.json();
         if (!cancelled) {
           setWolfId(j.wolfId || '');
-          setRegion(j.region || '');
+          // region is currently unused here; setRegion retained for future UI
         }
       })
       .catch(() => {});
@@ -184,7 +185,7 @@ export default function Home() {
       if (timer) window.clearInterval(timer);
       if (endBannerTimerRef.current) window.clearTimeout(endBannerTimerRef.current);
     };
-  }, []);
+  }, [hotlineStatus, isActivating]);
 
   // load last incident summary
   useEffect(() => {
@@ -222,14 +223,7 @@ export default function Home() {
   }, []);
 
   // fake relay latency by pinging a lightweight endpoint (or measure /api/me)
-  useEffect(() => {
-    let _cancelled = false;
-    const _start = performance.now();
-    fetch('/api/me').catch(() => {});
-    return () => {
-      _cancelled = true;
-    };
-  }, []);
+  // Removed unused latency probe effect
 
   return (
     <div>
@@ -245,14 +239,14 @@ export default function Home() {
                   <p className="text-accent mt-1">Your Wolf ID: <span className="font-mono">{wolfId || '—'}</span> | Status: <span className="text-cta">{packStatus}</span></p>
                 </div>
                 {(process.env.NEXT_PUBLIC_APP_ENV !== 'production' || activeSession?.active) && (
-                  <a
+                  <Link
                     href="/status"
                     className="ml-4 inline-flex items-center gap-2 text-sm text-cta hover:opacity-90 border border-cta/30 rounded px-3 py-1"
                     aria-label="View live hotline status"
                   >
                     Status
                     <span aria-hidden>↗</span>
-                  </a>
+                  </Link>
                 )}
               </div>
               {activeSession?.active ? (

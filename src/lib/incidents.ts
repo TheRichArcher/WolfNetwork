@@ -91,7 +91,6 @@ export async function getActiveIncidentForWolfId(wolfId: string): Promise<Incide
 
 export async function getPresenceForRegion(region: string): Promise<Array<{ category: 'Legal' | 'Medical' | 'PR' | 'Security'; name: string; status: 'Active' | 'Rotating' | 'Offline' }>> {
   // Mirror logic from /api/partners/presence to keep server-side availability without requiring auth
-  const env = getEnv();
   // Deterministic rotation based on region and minute
   const seed = Array.from((region || 'LA')).reduce((a, c) => a + c.charCodeAt(0), 0);
   const rotate = (n: number) => (seed + Math.floor(Date.now() / 60000)) % n;
