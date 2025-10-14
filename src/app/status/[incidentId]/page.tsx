@@ -13,8 +13,8 @@ type Incident = {
   durationSeconds?: number;
 };
 
-export default function IncidentStatusPage({ params }: { params: { incidentId: string } }) {
-  const { incidentId } = params;
+export default function IncidentStatusPage(props: any) {
+  const incidentId: string = String(props?.params?.incidentId || '');
   const [incident, setIncident] = useState<Incident | null>(null);
   const [loading, setLoading] = useState(true);
 

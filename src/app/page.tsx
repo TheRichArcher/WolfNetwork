@@ -13,7 +13,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [userTier, setUserTier] = useState<string | null>(null);
   const [wolfId, setWolfId] = useState<string>('');
-  const [region, setRegion] = useState<string>('');
+  // const [region, setRegion] = useState<string>(''); // reserved for future UI
   const [team, setTeam] = useState<Array<{ category: string; name: string; status: string }>>([]);
   const [lastActivation, setLastActivation] = useState<{ createdAt?: string; resolvedAt?: string | null; operatorId?: string | null } | null>(null);
   const [readiness, setReadiness] = useState<{ twoFA: boolean; profileVerified: boolean; hasPin: boolean; percent: number }>({ twoFA: false, profileVerified: false, hasPin: false, percent: 0 });
@@ -97,7 +97,7 @@ export default function Home() {
         const j = await r.json();
         if (!cancelled) {
           setWolfId(j.wolfId || '');
-          // region is currently unused here; setRegion retained for future UI
+          // region is unused; skip storing for now
         }
       })
       .catch(() => {});
