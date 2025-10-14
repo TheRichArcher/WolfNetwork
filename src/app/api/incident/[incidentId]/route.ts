@@ -3,9 +3,9 @@ import { findIncidentById } from '@/lib/db';
 
 export const runtime = 'nodejs';
 
-export async function GET(req: NextRequest, ctx: { params: { incidentId?: string } }) {
+export async function GET(_req: NextRequest, { params }: { params: { incidentId: string } }) {
   try {
-    const incidentId = String(ctx?.params?.incidentId || '').trim();
+    const incidentId = String(params?.incidentId || '').trim();
     if (!incidentId) return NextResponse.json({ error: 'Missing incidentId' }, { status: 400 });
     const incident = await findIncidentById(incidentId);
     if (!incident) return NextResponse.json({ error: 'Not found' }, { status: 404 });

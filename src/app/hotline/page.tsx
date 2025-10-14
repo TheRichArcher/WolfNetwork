@@ -133,7 +133,7 @@ const HotlinePage = () => {
       if (timer) window.clearInterval(timer);
       if (endMessageTimerRef.current) window.clearTimeout(endMessageTimerRef.current);
     };
-  }, [isActivated, status]);
+  }, [isActivated, status, incidentId]);
 
   const overlay = useMemo(() => (
     <div className="fixed inset-0 bg-black bg-opacity-80 z-50 flex flex-col items-center justify-center animate-fadeIn">
