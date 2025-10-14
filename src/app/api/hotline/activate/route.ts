@@ -75,16 +75,10 @@ export async function POST(req: NextRequest) {
     }
 
     // Initiate Twilio call with retries for reliability
-    const call = await retry(() => createDirectCall({
-      accountSid: env.TWILIO_ACCOUNT_SID || '',
-      authToken: env.TWILIO_AUTH_TOKEN || '',
-      from: env.TWILIO_FROM_NUMBER || '',
-      to: toNumber,
+    const call = await retry(() => createDirectCall(
+      toNumber,
       twimlUrl,
-      statusCallback: `${base}/api/twilio/call-status`,
-      statusCallbackEvent: ['initiated', 'ringing', 'answered', 'completed'],
-      timeout: 30,
-    }), {
+    ), {
       retries: 3, // Retry up to 3 times on transient errors
       minTimeout: 1000,
       maxTimeout: 5000,
