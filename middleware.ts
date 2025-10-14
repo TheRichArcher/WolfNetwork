@@ -58,7 +58,9 @@ export default withAuth(async function middleware(req: NextRequest) {
     }
   }
 
-  const isLoggedIn = !!(req as any).nextauth?.token;
+  // Reliable auth check using NextAuth JWT
+  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+  const isLoggedIn = Boolean(token);
   if (!isLoggedIn) {
     if (nextUrl.pathname === "/") {
       console.log("redirecting to /signup");
