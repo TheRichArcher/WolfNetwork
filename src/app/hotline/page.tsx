@@ -9,6 +9,7 @@ const LONG_PRESS_MS = 1500;
 
 const HotlinePage = () => {
   const [isActivated, setIsActivated] = useState(false);
+  const [isActivating, setIsActivating] = useState(false);
   const [status, setStatus] = useState('Idle');
   const [wolfId, setWolfId] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
@@ -47,22 +48,25 @@ const HotlinePage = () => {
       clearTimeout(pressTimerRef.current);
       pressTimerRef.current = null;
     }
-    if (!isActivated) setStatus('Idle');
+    if (!isActivated && !isActivating) setStatus('Idle');
   };
 
   const activateHotline = async () => {
-    setIsActivated(true);
+    setIsActivating(true);
     setError(null);
     try {
       const resp = await fetch('/api/activate-hotline', { method: 'POST' });
       const data = await resp.json();
       if (!resp.ok) throw new Error(data?.error || 'Activation failed');
+      setIsActivated(true);
+      setIsActivating(false);
       setStatus('Connected');
       try { posthog.capture('hotline_activated', { wolfId: data?.wolfId }); } catch {}
       if ('vibrate' in navigator) navigator.vibrate([30, 50, 30]);
     } catch (e: unknown) {
       setStatus('Idle');
       setIsActivated(false);
+      setIsActivating(false);
       setError(e instanceof Error ? e.message : 'Unknown error');
     }
   };
@@ -143,7 +147,7 @@ const HotlinePage = () => {
         <HotlineButton
           session={{ active: isActivated }}
           isPressing={isPressing}
-          isActivating={isActivated}
+          isActivating={isActivating}
           holdProgress={holdProgress}
           onPointerDown={startPress}
           onPointerUp={endPress}
@@ -154,7 +158,7 @@ const HotlinePage = () => {
         <p className="mt-4 text-sm text-accent" aria-live="polite">{status}</p>
         {error && <p className="mt-2 text-sm text-red-400" role="alert">{error}</p>}
       </div>
-      {isActivated && overlay}
+      {(isActivating || isActivated) && overlay}
     </Layout>
   );
 };
