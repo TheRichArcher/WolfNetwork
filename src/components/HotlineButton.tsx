@@ -19,6 +19,7 @@ type Props = {
   session?: Session | null;
   isPressing: boolean;
   isActivating: boolean;
+  isDeactivating?: boolean;
   holdProgress?: number; // 0..1 during hold
   onPointerDown: () => void;
   onPointerUp: () => void;
@@ -40,19 +41,21 @@ function isInProgress(status: string | undefined): boolean {
 function computeLabel(session?: Session | null, isPressing?: boolean, isActivating?: boolean, terminalResetAt?: number | null): string {
   const status = (session?.twilioStatus || '').toLowerCase();
   const callSid = session?.callSid || null;
-
   if (terminalResetAt && Date.now() >= terminalResetAt) {
-    return 'Activate Hotline';
+    return 'Idle\nHold to Activate';
   }
-
+  if (isDeactivating) return 'Ending…';
+  if (session?.active && isPressing && !isTerminal(status)) {
+    return 'Hold to End…';
+  }
   if (!callSid && !session?.active && !isInProgress(status)) {
-    return isPressing ? 'Hold…' : 'Activate Hotline';
+    return isPressing ? 'Hold…' : 'Idle\nHold to Activate';
   }
   if (!status || status === 'queued' || status === 'initiated') {
     return 'Calling Operator…';
   }
   if (status === 'ringing' || status === 'in-progress' || status === 'answered') {
-    return 'Connected to Operator';
+    return isPressing ? 'Hold to End…' : 'Connected\nHold to End';
   }
   if (isTerminal(status)) {
     const d = typeof session?.durationSeconds === 'number' ? ` (${session?.durationSeconds}s)` : '';
@@ -60,7 +63,7 @@ function computeLabel(session?: Session | null, isPressing?: boolean, isActivati
   }
   // Fallback for transient UI states
   if (isActivating) return 'Dispatching…';
-  return 'Activate Hotline';
+  return 'Idle\nHold to Activate';
 }
 
 function computeClassNames(session?: Session | null, isPressing?: boolean, isActivating?: boolean, terminalResetAt?: number | null): string {
@@ -68,10 +71,11 @@ function computeClassNames(session?: Session | null, isPressing?: boolean, isAct
   const callSid = session?.callSid || null;
   const terminal = isTerminal(status);
   const isActive = status === 'ringing' || status === 'in-progress' || status === 'answered' || Boolean(session?.active);
-
-  const base = 'rounded-full flex items-center justify-center text-main-text font-bold shadow-lg select-none transition-all';
+  const base = 'rounded-full flex items-center justify-center text-main-text font-bold shadow-lg select-none transition-all whitespace-pre-wrap text-center';
   const size = 'w-24 h-24 text-sm';
-
+  if (isDeactivating) {
+    return `${base} ${size} bg-gray-700`;
+  }
   if (isActive && !terminal) {
     return `${base} ${size} bg-green-600`;
   }
@@ -109,10 +113,9 @@ export default function HotlineButton(props: Props) {
 
   const label = computeLabel(session, isPressing, isActivating, terminalResetAt);
   const className = computeClassNames(session, isPressing, isActivating, terminalResetAt);
-  const disabled = isInProgress(session?.twilioStatus) || isActivating;
-
+  const disabled = isActivating || (isDeactivating || false);
   const progress = Math.max(0, Math.min(1, typeof props.holdProgress === 'number' ? props.holdProgress : 0));
-  const showProgress = isPressing && !isActivating && !Boolean(session?.active);
+  const showProgress = isPressing && !isActivating && !(isDeactivating || false);
 
   return (
     <button

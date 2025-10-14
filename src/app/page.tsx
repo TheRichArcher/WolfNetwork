@@ -25,6 +25,7 @@ export default function Home() {
   // Hotline long-press behavior (mirrors /hotline)
   const LONG_PRESS_MS = 1500;
   const [isActivating, setIsActivating] = useState(false);
+  const [isDeactivating, setIsDeactivating] = useState(false);
   const [hotlineStatus, setHotlineStatus] = useState('idle');
   const [hotlineError, setHotlineError] = useState<string | null>(null);
   const pressTimerRef = useRef<number | null>(null);
@@ -34,36 +35,18 @@ export default function Home() {
   const endBannerTimerRef = useRef<number | null>(null);
 
   const startPress = () => {
+    if (isActivating || isDeactivating) return;
     isPressingRef.current = true;
     setIsPressing(true);
-    setHotlineError(null);
-    setHotlineStatus('Hold to activate — release to cancel');
+    const isEnding = activeSession?.active && !isTerminal(activeSession?.twilioStatus);
+    setHotlineStatus(isEnding ? 'Hold to end...' : 'Hold to activate...');
     if ('vibrate' in navigator) navigator.vibrate(10);
-    pressTimerRef.current = window.setTimeout(async () => {
+    pressTimerRef.current = window.setTimeout(() => {
       if (!isPressingRef.current) return;
-      setIsActivating(true);
-      try {
-        const resp = await fetch('/api/activate-hotline', { method: 'POST' });
-        const data = await resp.json();
-        if (!resp.ok) throw new Error(data?.error || 'Activation failed');
-        setHotlineStatus('Connected to Operator');
-        try {
-          const newIncidentId: string | undefined = data?.incidentId;
-          if (newIncidentId) {
-            setActiveSession({ active: true, incidentId: newIncidentId });
-            setFallbackIncidentId(newIncidentId);
-            if (typeof window !== 'undefined') {
-              localStorage.setItem('lastIncidentId', newIncidentId);
-              localStorage.setItem('lastIncidentSavedAt', String(Date.now()));
-            }
-          }
-        } catch {}
-        setIsActivating(false);
-        if ('vibrate' in navigator) navigator.vibrate([30, 50, 30]);
-      } catch {
-        setHotlineStatus('Failed');
-        setHotlineError('Something went wrong. Try again or contact support.');
-        setIsActivating(false);
+      if (isEnding) {
+        endSession(true);
+      } else {
+        activateHotline();
       }
     }, LONG_PRESS_MS);
     const started = performance.now();
@@ -83,7 +66,7 @@ export default function Home() {
       clearTimeout(pressTimerRef.current);
       pressTimerRef.current = null;
     }
-    if (!isActivating) setHotlineStatus('idle');
+    if (!isActivating && !isDeactivating) setHotlineStatus('idle');
   };
 
   useEffect(() => {
@@ -329,15 +312,18 @@ export default function Home() {
                 )}
               </div>
               {activeSession?.active ? (
-                <div className="mt-4">
-                  <div className="text-accent text-sm">Live call in progress. See Active Session card below.</div>
+                <div className="mt-4 flex justify-center">
+                  <button className="w-24 h-24 rounded-full bg-green-600 text-main-text font-bold shadow-lg" disabled aria-disabled="true">
+                    Connected
+                  </button>
                 </div>
               ) : (
-                <div className="mt-4 flex items-center gap-4">
+                <div className="mt-4 flex justify-center">
                   <HotlineButton
-                    session={activeSession as { active?: boolean; callSid?: string; twilioStatus?: string; durationSeconds?: number } | null}
+                    session={activeSession}
                     isPressing={isPressing}
                     isActivating={isActivating}
+                    isDeactivating={isDeactivating}
                     holdProgress={holdProgress}
                     onPointerDown={startPress}
                     onPointerUp={endPress}
@@ -345,7 +331,6 @@ export default function Home() {
                     onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') startPress(); }}
                     onKeyUp={endPress}
                   />
-                  <div className={`text-sm ${hotlineStatus === 'Failed' ? 'text-red-400' : 'text-accent'}`} aria-live="polite">{hotlineStatus}</div>
                 </div>
               )}
               {hotlineError && (
@@ -380,28 +365,7 @@ export default function Home() {
                   </div>
                   <button
                     className="ml-4 px-3 py-2 rounded bg-alert text-main-text text-sm"
-                    onClick={async () => {
-                      const incidentId = activeSession?.incidentId;
-                      const callSid = (activeSession as unknown as { callSid?: string })?.callSid;
-                      if (!incidentId && !callSid) return;
-                      try {
-                        const r = await fetch('/api/hotline/end-session', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ incidentId, callSid }),
-                        });
-                        if (r.ok) {
-                          // Refresh active session state to confirm cleared
-                          try {
-                            const res = await fetch('/api/me/active-session');
-                            const j = await res.json().catch(() => ({ active: false }));
-                            setActiveSession(j && typeof j === 'object' ? j : { active: false });
-                          } catch {
-                            setActiveSession({ active: false });
-                          }
-                        }
-                      } catch {}
-                    }}
+                    onClick={() => endSession(false)}
                   >
                     End Session
                   </button>
@@ -492,5 +456,54 @@ function formatMinutesDiff(startIso: string, endIso: string): string {
   const mins = Math.max(0, Math.round((end - start) / (1000 * 60)));
   return `${mins} minute${mins === 1 ? '' : 's'}`;
 }
+
+async function activateHotline() {
+  setIsActivating(true);
+  setHotlineError(null);
+  try {
+    const r = await fetch('/api/hotline/activate', { method: 'POST' });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || 'Activation failed');
+    setFallbackIncidentId(j.incidentId || null);
+    try { posthog.capture('hotline_activated', { wolfId: j.wolfId }); } catch {}
+  } catch (e) {
+    setHotlineError(e instanceof Error ? e.message : 'Unknown error');
+  } finally {
+    setIsActivating(false);
+  }
+}
+
+async function endSession(setBusy = false) {
+  if (setBusy) setIsDeactivating(true);
+  const incidentId = activeSession?.incidentId || fallbackIncidentId;
+  const callSid = activeSession?.callSid;
+  if (!incidentId && !callSid) {
+    if (setBusy) setIsDeactivating(false);
+    return;
+  }
+  try {
+    const r = await fetch('/api/hotline/end-session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ incidentId, callSid }),
+    });
+    if (r.ok) {
+      const res = await fetch('/api/me/active-session');
+      const j = await res.json().catch(() => ({ active: false }));
+      setActiveSession(j);
+    } else {
+      setHotlineError('Failed to end session');
+    }
+  } catch {
+    setHotlineError('Error ending session');
+  } finally {
+    if (setBusy) setIsDeactivating(false);
+  }
+}
+
+const isTerminal = (status: string | undefined) => {
+  const s = (status || '').toLowerCase();
+  return s === 'completed' || s === 'busy' || s === 'no-answer' || s === 'failed' || s === 'canceled';
+};
 
 
