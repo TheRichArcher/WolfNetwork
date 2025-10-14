@@ -7,7 +7,6 @@ function extractStatusCode(err: unknown): number | undefined {
   return typeof maybe === 'number' ? maybe : undefined;
 }
 import { findUserBySessionEmail, findIncidentById, updateIncident, type IncidentRecord } from './db';
-import { getEnv } from './env';
 import { notifyDiscordOnIncidentResolved } from './notify';
 
 function getBase() {
