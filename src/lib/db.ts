@@ -183,24 +183,18 @@ export async function createIncident(incident: IncidentRecord): Promise<Incident
     const created = await table.create([
       {
         fields: {
-          // Write to common variants to increase compatibility with existing bases
-          ID: incident.id,
+          // Only write lowercase camelCase field names per current schema
+          id: incident.id,
           wolfId: incident.wolfId,
-          'Invite Code': incident.wolfId,
           sessionSid: incident.sessionSid,
           status: incident.status,
-          Status: incident.status,
           type: incident.type || 'unknown',
           partnerId: incident.partnerId || '',
           operatorId: incident.operatorId || '',
           createdAt: incident.createdAt,
-          CreatedAt: incident.createdAt,
           resolvedAt: incident.resolvedAt || '',
-          ResolvedAt: incident.resolvedAt || '',
           tier: incident.tier || '',
-          Tier: incident.tier || '',
           region: incident.region || '',
-          Region: incident.region || '',
         },
       },
     ]);
