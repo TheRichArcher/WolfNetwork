@@ -195,6 +195,11 @@ export async function createIncident(incident: IncidentRecord): Promise<Incident
     if (typeof incident.tier === 'string' && incident.tier) fields.tier = incident.tier;
     if (typeof incident.region === 'string' && incident.region) fields.region = incident.region;
 
+    // Debug: log outgoing Airtable payload to verify omitted fields
+    try {
+      console.log('Airtable create payload:', fields);
+    } catch {}
+
     const created = await table.create([
       {
         fields,
