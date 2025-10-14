@@ -14,6 +14,7 @@ const HotlinePage = () => {
   const [error, setError] = useState<string | null>(null);
   const endMessageTimerRef = useRef<number | null>(null);
   const [isPressing, setIsPressing] = useState(false);
+  const [holdProgress, setHoldProgress] = useState(0);
 
   const pressTimerRef = useRef<number | null>(null);
   const isPressingRef = useRef(false);
@@ -21,17 +22,27 @@ const HotlinePage = () => {
   const startPress = () => {
     isPressingRef.current = true;
     setIsPressing(true);
-    setStatus('Activating…');
+    setStatus('Hold to activate — release to cancel');
     if ('vibrate' in navigator) navigator.vibrate(10);
     pressTimerRef.current = window.setTimeout(() => {
       if (!isPressingRef.current) return;
       activateHotline();
     }, LONG_PRESS_MS);
+    // Animate progress
+    const started = performance.now();
+    const tick = () => {
+      if (!isPressingRef.current) return;
+      const elapsed = performance.now() - started;
+      setHoldProgress(Math.min(1, elapsed / LONG_PRESS_MS));
+      if (elapsed < LONG_PRESS_MS) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
   };
 
   const endPress = () => {
     isPressingRef.current = false;
     setIsPressing(false);
+    setHoldProgress(0);
     if (pressTimerRef.current) {
       clearTimeout(pressTimerRef.current);
       pressTimerRef.current = null;
@@ -133,6 +144,7 @@ const HotlinePage = () => {
           session={{ active: isActivated }}
           isPressing={isPressing}
           isActivating={isActivated}
+          holdProgress={holdProgress}
           onPointerDown={startPress}
           onPointerUp={endPress}
           onPointerLeave={endPress}

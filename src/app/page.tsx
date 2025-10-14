@@ -28,13 +28,14 @@ export default function Home() {
   const pressTimerRef = useRef<number | null>(null);
   const isPressingRef = useRef(false);
   const [isPressing, setIsPressing] = useState(false);
+  const [holdProgress, setHoldProgress] = useState(0);
   const endBannerTimerRef = useRef<number | null>(null);
 
   const startPress = () => {
     isPressingRef.current = true;
     setIsPressing(true);
     setHotlineError(null);
-    setHotlineStatus('Dispatching operator…');
+    setHotlineStatus('Hold to activate — release to cancel');
     if ('vibrate' in navigator) navigator.vibrate(10);
     pressTimerRef.current = window.setTimeout(async () => {
       if (!isPressingRef.current) return;
@@ -52,10 +53,19 @@ export default function Home() {
         setIsActivating(false);
       }
     }, LONG_PRESS_MS);
+    const started = performance.now();
+    const tick = () => {
+      if (!isPressingRef.current) return;
+      const elapsed = performance.now() - started;
+      setHoldProgress(Math.min(1, elapsed / LONG_PRESS_MS));
+      if (elapsed < LONG_PRESS_MS) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
   };
   const endPress = () => {
     isPressingRef.current = false;
     setIsPressing(false);
+    setHoldProgress(0);
     if (pressTimerRef.current) {
       clearTimeout(pressTimerRef.current);
       pressTimerRef.current = null;
@@ -255,6 +265,7 @@ export default function Home() {
                     session={activeSession as { active?: boolean; callSid?: string; twilioStatus?: string; durationSeconds?: number } | null}
                     isPressing={isPressing}
                     isActivating={isActivating}
+                    holdProgress={holdProgress}
                     onPointerDown={startPress}
                     onPointerUp={endPress}
                     onPointerLeave={endPress}

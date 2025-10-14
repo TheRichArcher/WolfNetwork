@@ -26,6 +26,7 @@ export type Env = {
   PUBLIC_BASE_URL?: string;
   ENCRYPTION_KEY?: string;
   DATABASE_URL?: string;
+  DISCORD_WEBHOOK_URL?: string;
 };
 
 // Only enforce the minimal env required for core server operations.
@@ -64,6 +65,7 @@ export function getEnv(): Env {
     PUBLIC_BASE_URL: process.env.PUBLIC_BASE_URL,
     ENCRYPTION_KEY: process.env.ENCRYPTION_KEY,
     DATABASE_URL: process.env.DATABASE_URL,
+    DISCORD_WEBHOOK_URL: process.env.DISCORD_WEBHOOK_URL,
   };
 
   const isProd = process.env.NODE_ENV === 'production';

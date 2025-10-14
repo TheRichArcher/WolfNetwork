@@ -19,6 +19,7 @@ type Props = {
   session?: Session | null;
   isPressing: boolean;
   isActivating: boolean;
+  holdProgress?: number; // 0..1 during hold
   onPointerDown: () => void;
   onPointerUp: () => void;
   onPointerLeave: () => void;
@@ -110,8 +111,12 @@ export default function HotlineButton(props: Props) {
   const className = computeClassNames(session, isPressing, isActivating, terminalResetAt);
   const disabled = isInProgress(session?.twilioStatus) || isActivating;
 
+  const progress = Math.max(0, Math.min(1, typeof props.holdProgress === 'number' ? props.holdProgress : 0));
+  const showProgress = isPressing && !isActivating && !Boolean(session?.active);
+
   return (
     <button
+      style={{ position: 'relative' as const }}
       onPointerDown={props.onPointerDown}
       onPointerUp={props.onPointerUp}
       onPointerLeave={props.onPointerLeave}
@@ -123,6 +128,28 @@ export default function HotlineButton(props: Props) {
       aria-disabled={disabled}
       className={className}
     >
+      {showProgress ? (
+        <svg
+          aria-hidden
+          viewBox="0 0 100 100"
+          width="100%"
+          height="100%"
+          style={{ position: 'absolute', inset: 0, transform: 'rotate(-90deg)' }}
+        >
+          <circle cx="50" cy="50" r="45" stroke="rgba(255,255,255,0.18)" strokeWidth="6" fill="none" />
+          <circle
+            cx="50"
+            cy="50"
+            r="45"
+            stroke="#f97316"
+            strokeWidth="6"
+            strokeLinecap="round"
+            fill="none"
+            strokeDasharray={Math.PI * 2 * 45}
+            strokeDashoffset={(1 - progress) * Math.PI * 2 * 45}
+          />
+        </svg>
+      ) : null}
       {label}
     </button>
   );

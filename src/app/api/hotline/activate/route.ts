@@ -6,6 +6,9 @@ import { createDirectCall } from '@/lib/twilioCalls';
 import { getEnv } from '@/lib/env';
 import { logEvent } from '@/lib/log';
 import { checkRateLimit } from '@/lib/rateLimit';
+import { notifyDiscordOnIncident } from '@/lib/notify';
+import { getPresenceForRegion } from '@/lib/incidents';
+import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(req: NextRequest) {
   try {
@@ -42,6 +45,14 @@ export async function POST(req: NextRequest) {
         region: user?.region || 'LA',
       });
       incidentId = incident.id;
+      // Fire-and-forget Discord notification; do not block activation on failures
+      const base = getEnv().PUBLIC_BASE_URL || `${req.nextUrl.protocol}//${req.nextUrl.host}`;
+      const presence = await getPresenceForRegion(user?.region || 'LA');
+      notifyDiscordOnIncident({
+        incident: { id: incidentId, wolfId: user?.wolfId || 'WOLF-DEV-TEST', tier: user?.tier, region: user?.region },
+        presence,
+        baseUrl: base,
+      }).catch(() => {});
     } catch (e: unknown) {
       if (authBypass) {
         persisted = false;

@@ -1,6 +1,7 @@
 import Airtable from 'airtable';
 import { getEnv } from './env';
 import { logEvent } from './log';
+import { type IncidentRecord } from './db';
 
 function extractStatusCode(err: unknown): number | undefined {
   const maybe = (err as { statusCode?: unknown })?.statusCode;
@@ -86,6 +87,22 @@ export async function getActiveIncidentForWolfId(wolfId: string): Promise<Incide
     twilioStatus: (r.get('twilioStatus') as string) || undefined,
     durationSeconds: (r.get('durationSeconds') as number) || undefined,
   };
+}
+
+export async function getPresenceForRegion(region: string): Promise<Array<{ category: 'Legal' | 'Medical' | 'PR' | 'Security'; name: string; status: 'Active' | 'Rotating' | 'Offline' }>> {
+  // Mirror logic from /api/partners/presence to keep server-side availability without requiring auth
+  const env = getEnv();
+  // Deterministic rotation based on region and minute
+  const seed = Array.from((region || 'LA')).reduce((a, c) => a + c.charCodeAt(0), 0);
+  const rotate = (n: number) => (seed + Math.floor(Date.now() / 60000)) % n;
+  const categories = [
+    { category: 'Legal' as const, name: 'Counsel' },
+    { category: 'Medical' as const, name: 'Clinician' },
+    { category: 'PR' as const, name: 'Comms' },
+    { category: 'Security' as const, name: 'Field Team' },
+  ];
+  const statuses = ['Active', 'Rotating', 'Offline'] as const;
+  return categories.map((c, idx) => ({ category: c.category, name: c.name, status: statuses[(rotate(3) + idx) % 3] }));
 }
 
 
