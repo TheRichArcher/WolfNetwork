@@ -180,22 +180,24 @@ export async function createIncident(incident: IncidentRecord): Promise<Incident
   try {
     const base = getBase();
     const table = base(INCIDENTS_TABLE);
+    // Build fields object and omit optional unset values (Airtable rejects empty strings for date fields)
+    const fields: FieldSet = {
+      id: incident.id,
+      wolfId: incident.wolfId,
+      sessionSid: incident.sessionSid,
+      status: incident.status,
+      type: incident.type || 'unknown',
+      createdAt: incident.createdAt,
+    };
+    if (typeof incident.partnerId === 'string' && incident.partnerId) fields.partnerId = incident.partnerId;
+    if (typeof incident.operatorId === 'string' && incident.operatorId) fields.operatorId = incident.operatorId;
+    if (typeof incident.resolvedAt === 'string' && incident.resolvedAt) fields.resolvedAt = incident.resolvedAt;
+    if (typeof incident.tier === 'string' && incident.tier) fields.tier = incident.tier;
+    if (typeof incident.region === 'string' && incident.region) fields.region = incident.region;
+
     const created = await table.create([
       {
-        fields: {
-          // Only write lowercase camelCase field names per current schema
-          id: incident.id,
-          wolfId: incident.wolfId,
-          sessionSid: incident.sessionSid,
-          status: incident.status,
-          type: incident.type || 'unknown',
-          partnerId: incident.partnerId || '',
-          operatorId: incident.operatorId || '',
-          createdAt: incident.createdAt,
-          resolvedAt: incident.resolvedAt || '',
-          tier: incident.tier || '',
-          region: incident.region || '',
-        },
+        fields,
       },
     ]);
     const r = created[0];
