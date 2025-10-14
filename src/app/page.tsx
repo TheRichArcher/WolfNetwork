@@ -19,7 +19,19 @@ export default function Home() {
   const [readiness, setReadiness] = useState<{ twoFA: boolean; profileVerified: boolean; hasPin: boolean; percent: number }>({ twoFA: false, profileVerified: false, hasPin: false, percent: 0 });
   const [packStatus, setPackStatus] = useState<string>('Pack Ready');
   const [partnersPresence, setPartnersPresence] = useState<Array<{ category: string; name: string; status: 'Active' | 'Rotating' | 'Offline' }>>([]);
-  const [activeSession, setActiveSession] = useState<{ active: boolean; sessionSid?: string; incidentId?: string; operator?: string; startedAt?: string } | null>(null);
+  const [activeSession, setActiveSession] = useState<{ 
+    active: boolean; 
+    status?: string;
+    sessionSid?: string; 
+    callSid?: string;
+    incidentId?: string; 
+    wolfId?: string;
+    operator?: string; 
+    startedAt?: string;
+    twilioStatus?: string;
+    durationSeconds?: number;
+    isTerminal?: boolean;
+  } | null>(null);
   const [fallbackIncidentId, setFallbackIncidentId] = useState<string | null>(null);
 
   // Hotline long-press behavior (mirrors /hotline)
@@ -247,7 +259,7 @@ export default function Home() {
       if (timer) window.clearInterval(timer);
       if (endBannerTimerRef.current) window.clearTimeout(endBannerTimerRef.current);
     };
-  }, [hotlineStatus, isActivating]);
+  }, [hotlineStatus, isActivating, fallbackIncidentId]);
 
   // load last incident summary
   useEffect(() => {
