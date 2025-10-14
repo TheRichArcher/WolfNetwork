@@ -15,12 +15,10 @@ export async function POST(req: NextRequest) {
   try {
     // Validate request body
     const bodySchema = z.object({});
-    let body;
+    let body: unknown = {};
     try {
       body = await req.json();
-    } catch {
-      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
-    }
+    } catch {}
     await bodySchema.parseAsync(body);
 
     // Authenticate user via session token
