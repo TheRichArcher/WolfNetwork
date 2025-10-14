@@ -1,7 +1,6 @@
 import Airtable from 'airtable';
 import { getEnv } from './env';
 import { logEvent } from './log';
-import { type IncidentRecord } from './db';
 
 function extractStatusCode(err: unknown): number | undefined {
   const maybe = (err as { statusCode?: unknown })?.statusCode;
