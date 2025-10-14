@@ -346,7 +346,8 @@ export default function Home() {
         const j = await res.json().catch(() => ({ active: false }));
         setActiveSession(j);
       } else {
-        setHotlineError('Failed to end session');
+        const err = await r.json().catch(() => ({ error: 'Unknown error' }));
+        setHotlineError(err.error || 'Failed to end session');
       }
     } catch {
       setHotlineError('Error ending session');
