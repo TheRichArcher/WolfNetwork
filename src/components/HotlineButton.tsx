@@ -38,7 +38,7 @@ function isInProgress(status: string | undefined): boolean {
   return s === 'queued' || s === 'initiated' || s === 'ringing' || s === 'in-progress' || s === 'answered';
 }
 
-function computeLabel(session?: Session | null, isPressing?: boolean, isActivating?: boolean, terminalResetAt?: number | null): string {
+function computeLabel(session?: Session | null, isPressing?: boolean, isActivating?: boolean, isDeactivating?: boolean, terminalResetAt?: number | null): string {
   const status = (session?.twilioStatus || '').toLowerCase();
   const callSid = session?.callSid || null;
   if (terminalResetAt && Date.now() >= terminalResetAt) {
@@ -66,7 +66,7 @@ function computeLabel(session?: Session | null, isPressing?: boolean, isActivati
   return 'Idle\nHold to Activate';
 }
 
-function computeClassNames(session?: Session | null, isPressing?: boolean, isActivating?: boolean, terminalResetAt?: number | null): string {
+function computeClassNames(session?: Session | null, isPressing?: boolean, isActivating?: boolean, isDeactivating?: boolean, terminalResetAt?: number | null): string {
   const status = (session?.twilioStatus || '').toLowerCase();
   const callSid = session?.callSid || null;
   const terminal = isTerminal(status);
@@ -111,11 +111,11 @@ export default function HotlineButton(props: Props) {
     return;
   }, [session?.twilioStatus, session?.durationSeconds, terminalResetAt]);
 
-  const label = computeLabel(session, isPressing, isActivating, terminalResetAt);
-  const className = computeClassNames(session, isPressing, isActivating, terminalResetAt);
-  const disabled = isActivating || (isDeactivating || false);
+  const label = computeLabel(session, isPressing, isActivating, props.isDeactivating, terminalResetAt);
+  const className = computeClassNames(session, isPressing, isActivating, props.isDeactivating, terminalResetAt);
+  const disabled = isActivating || Boolean(props.isDeactivating);
   const progress = Math.max(0, Math.min(1, typeof props.holdProgress === 'number' ? props.holdProgress : 0));
-  const showProgress = isPressing && !isActivating && !(isDeactivating || false);
+  const showProgress = isPressing && !isActivating && !Boolean(props.isDeactivating);
 
   return (
     <button
