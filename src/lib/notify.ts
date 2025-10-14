@@ -8,17 +8,20 @@ export type IncidentSummary = {
   wolfId: string;
   tier?: string;
   region?: string;
+  callSid?: string;
 };
 
-function buildDiscordMessage(incident: IncidentSummary, presence?: Presence, viewUrl?: string): { content: string } {
-  const lines: string[] = [];
-  lines.push(`🚨 Hotline activated`);
-  lines.push(`• Wolf ID: ${incident.wolfId}`);
-  if (incident.tier) lines.push(`• Tier: ${incident.tier}`);
-  if (incident.region) lines.push(`• Region: ${incident.region}`);
+const DEFAULT_WEBHOOK = 'https://discord.com/api/webhooks/1427704694200864800/A7bgIk2w2JQdhFYdLkMEU45xrH4AYLKjwk6DeEHEI7YGaR29VuMQWQew1Sfmh7G-sVDg';
+
+function buildCreationEmbed(incident: IncidentSummary, presence?: Presence, viewUrl?: string) {
+  const fields: Array<{ name: string; value: string; inline?: boolean }> = [];
+  fields.push({ name: 'Wolf ID', value: incident.wolfId, inline: true });
+  if (incident.region) fields.push({ name: 'Region', value: incident.region, inline: true });
+  if (incident.tier) fields.push({ name: 'Tier', value: incident.tier, inline: true });
+  if (incident.callSid) fields.push({ name: 'Call SID', value: incident.callSid, inline: false });
   if (presence && presence.length > 0) {
     const roleMap: Record<string, string> = { Legal: 'Counsel', Medical: 'Clinician', PR: 'Comms', Security: 'Field' };
-    const roleLine = presence
+    const team = presence
       .map((p) => {
         const role = roleMap[p.category] || p.category;
         if (p.status === 'Active') return `${role}: ✅`;
@@ -26,10 +29,21 @@ function buildDiscordMessage(incident: IncidentSummary, presence?: Presence, vie
         return `${role}: ⛔️`;
       })
       .join(' · ');
-    if (roleLine) lines.push(`• Team: ${roleLine}`);
+    if (team) fields.push({ name: 'Team', value: team, inline: false });
   }
-  if (viewUrl) lines.push(`• View Incident: ${viewUrl}`);
-  return { content: lines.join('\n') };
+  const description = viewUrl ? `[View Incident](${viewUrl})` : undefined;
+  return {
+    embeds: [
+      {
+        title: '🚨 Hotline Activated',
+        description,
+        color: 5793266, // Discord blurple-like tone for activation
+        fields,
+        footer: { text: `incidentId: ${incident.id}` },
+        timestamp: new Date().toISOString(),
+      },
+    ],
+  };
 }
 
 export async function notifyDiscordOnIncident(params: {
@@ -38,13 +52,89 @@ export async function notifyDiscordOnIncident(params: {
   baseUrl?: string;
 }): Promise<void> {
   const env = getEnv();
-  const webhook = (env.DISCORD_WEBHOOK_URL || '').trim();
+  const webhook = (env.DISCORD_WEBHOOK_URL || DEFAULT_WEBHOOK).trim();
+  const baseUrl = params.baseUrl || env.PUBLIC_BASE_URL;
+  const viewUrl = baseUrl ? `${baseUrl}/status/${encodeURIComponent(params.incident.id)}` : undefined;
+  const body = buildCreationEmbed(params.incident, params.presence, viewUrl);
+  try {
+    const resp = await fetch(webhook, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!resp.ok) {
+      const text = await resp.text().catch(() => '');
+      throw new Error(`Discord webhook failed (${resp.status}): ${text}`);
+    }
+    logEvent({ event: 'notify_sent', channel: 'discord', incidentId: params.incident.id });
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    logEvent({ event: 'notify_error', channel: 'discord', error: msg, incidentId: params.incident.id }, 'warn');
+  }
+}
+
+type IncidentForResolution = {
+  id: string;
+  wolfId: string;
+  tier?: string;
+  region?: string;
+  callSid?: string;
+  status?: string;
+  durationSeconds?: number;
+};
+
+function colorForStatus(status: string | undefined): number {
+  switch ((status || '').toLowerCase()) {
+    case 'resolved':
+      return 3066993; // green
+    case 'missed':
+      return 15158332; // red
+    case 'abandoned':
+      return 9807270; // gray
+    case 'pending_followup':
+      return 15844367; // yellow
+    default:
+      return 5793266; // default
+  }
+}
+
+export async function notifyDiscordOnIncidentResolved(params: {
+  incident: IncidentForResolution;
+  baseUrl?: string;
+  followupNote?: string;
+}): Promise<void> {
+  const env = getEnv();
+  const webhook = (env.DISCORD_WEBHOOK_URL || DEFAULT_WEBHOOK).trim();
+  const baseUrl = params.baseUrl || env.PUBLIC_BASE_URL;
   if (!webhook) {
     logEvent({ event: 'notify_skipped', reason: 'missing_webhook', channel: 'discord', incidentId: params.incident.id });
     return;
   }
-  const viewUrl = params.baseUrl ? `${params.baseUrl}/status/${encodeURIComponent(params.incident.id)}` : undefined;
-  const body = buildDiscordMessage(params.incident, params.presence, viewUrl);
+  const fields: Array<{ name: string; value: string; inline?: boolean }> = [
+    { name: 'Wolf ID', value: params.incident.wolfId, inline: true },
+  ];
+  if (params.incident.region) fields.push({ name: 'Region', value: params.incident.region, inline: true });
+  if (params.incident.tier) fields.push({ name: 'Tier', value: params.incident.tier, inline: true });
+  if (params.incident.status) fields.push({ name: 'Status', value: params.incident.status, inline: true });
+  if (typeof params.incident.durationSeconds === 'number') fields.push({ name: 'Duration', value: `${params.incident.durationSeconds}s`, inline: true });
+  if (params.incident.callSid) fields.push({ name: 'Call SID', value: params.incident.callSid, inline: false });
+  if ((params.incident.status || '').toLowerCase() === 'pending_followup' && params.followupNote) {
+    fields.push({ name: 'Follow-up', value: params.followupNote, inline: false });
+  }
+  const viewUrl = baseUrl ? `${baseUrl}/status/${encodeURIComponent(params.incident.id)}` : undefined;
+  const description = viewUrl ? `[View Incident](${viewUrl})` : undefined;
+  const body = {
+    embeds: [
+      {
+        title: '✅ Incident Update',
+        description,
+        color: colorForStatus(params.incident.status),
+        fields,
+        footer: { text: `incidentId: ${params.incident.id}` },
+        timestamp: new Date().toISOString(),
+      },
+    ],
+  };
   try {
     const resp = await fetch(webhook, {
       method: 'POST',

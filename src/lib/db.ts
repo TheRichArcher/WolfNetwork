@@ -16,7 +16,7 @@ export type IncidentRecord = {
   id: string; // UUID
   wolfId: string;
   sessionSid: string;
-  status: 'initiated' | 'active' | 'resolved';
+  status: 'initiated' | 'active' | 'resolved' | 'abandoned' | 'missed' | 'pending_followup';
   type?: 'legal' | 'medical' | 'pr' | 'security' | 'unknown';
   partnerId?: string;
   operatorId?: string;

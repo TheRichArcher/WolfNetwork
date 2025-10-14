@@ -1,28 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyTwilioSignature } from '@/lib/twilioWebhook';
-import { findIncidentByCallSid, updateIncident } from '@/lib/db';
+import { findIncidentByCallSid } from '@/lib/db';
+import { resolveIncident } from '@/lib/incidents';
 import { logEvent } from '@/lib/log';
 
-function mapToIncidentUpdate(status: string, params: URLSearchParams) {
-  const updates: Record<string, unknown> = { twilioStatus: status };
-  const now = new Date().toISOString();
-  if (status === 'in-progress' || status === 'answered') {
-    updates['status'] = 'active';
-    updates['activatedAt'] = now;
-  } else if (
-    status === 'completed' ||
-    status === 'busy' ||
-    status === 'no-answer' ||
-    status === 'failed' ||
-    status === 'canceled'
-  ) {
-    updates['status'] = 'resolved';
-    updates['resolvedAt'] = now;
-    updates['statusReason'] = status;
-    const dur = params.get('CallDuration');
-    if (dur && /^\d+$/.test(dur)) updates['durationSeconds'] = Number(dur);
-  }
-  return updates;
+function mapToAction(status: string): { kind: 'activate' } | { kind: 'resolve'; status: 'resolved' | 'abandoned' | 'missed' | 'pending_followup' } | null {
+  if (status === 'in-progress' || status === 'answered') return { kind: 'activate' };
+  if (status === 'completed') return { kind: 'resolve', status: 'resolved' };
+  if (status === 'busy') return { kind: 'resolve', status: 'missed' };
+  if (status === 'no-answer' || status === 'failed' || status === 'canceled') return { kind: 'resolve', status: 'abandoned' };
+  return null;
 }
 
 export async function POST(req: NextRequest) {
@@ -56,16 +43,38 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
-    const updates = mapToIncidentUpdate(callStatus, params) as Partial<{
-      status: 'initiated' | 'active' | 'resolved';
-      activatedAt: string;
-      resolvedAt: string;
-      statusReason: string;
-      twilioStatus: string;
-      durationSeconds: number;
-    }>;
-    if (Object.keys(updates).length > 0) {
-      await updateIncident(incident.id, updates);
+    const action = mapToAction(callStatus);
+    if (action?.kind === 'activate') {
+      // Mark active without resolving
+      await (async () => {
+        try {
+          // activation update inline to avoid new helper; keep fields lowercased
+          const now = new Date().toISOString();
+          const dur = params.get('CallDuration');
+          const durationSeconds = dur && /^\d+$/.test(dur) ? Number(dur) : undefined;
+          // Use updateIncident via dynamic import to avoid circulars
+          const { updateIncident } = await import('@/lib/db');
+          await updateIncident(incident.id, {
+            status: 'active',
+            activatedAt: now,
+            twilioStatus: callStatus,
+            ...(typeof durationSeconds === 'number' ? { durationSeconds } : {}),
+          });
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : String(e);
+          logEvent({ event: 'activate_incident_error', route: '/api/twilio/call-status', incidentId: incident.id, error: msg }, 'warn');
+        }
+      })();
+    } else if (action?.kind === 'resolve') {
+      const dur = params.get('CallDuration');
+      const durationSeconds = dur && /^\d+$/.test(dur) ? Number(dur) : undefined;
+      await resolveIncident({
+        incidentId: incident.id,
+        status: action.status,
+        twilioStatus: callStatus,
+        statusReason: callStatus,
+        ...(typeof durationSeconds === 'number' ? { durationSeconds } : {}),
+      });
     }
     logEvent({ event: 'call_status', route: '/api/twilio/call-status', incidentId: incident.id, wolfId: incident.wolfId, callSid, callStatus });
     return NextResponse.json({ ok: true });
