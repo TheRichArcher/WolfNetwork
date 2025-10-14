@@ -14,6 +14,7 @@ export async function POST(req: NextRequest) {
     const token = await getToken({ req });
     const email = typeof token?.email === 'string' ? token.email : undefined;
     const authBypass = process.env.AUTH_DEV_BYPASS === 'true';
+    logEvent({ event: 'hotline_activate_request', route: '/api/hotline/activate', authBypass, hasEmail: Boolean(email), incidentsTable: process.env.INCIDENTS_TABLE_NAME || 'incidents' });
     if (!email && !authBypass) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     // Basic rate limit per user
@@ -22,6 +23,7 @@ export async function POST(req: NextRequest) {
     }
 
     const user = email ? await findUserBySessionEmail(email) : null;
+    logEvent({ event: 'hotline_user_lookup', route: '/api/hotline/activate', found: Boolean(user), wolfId: user?.wolfId, tier: user?.tier, region: user?.region });
     if (!user && !authBypass) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
     const toNumber = user?.phoneEncrypted ? decryptSecret(user.phoneEncrypted) : process.env.DEV_CALLER_E164 || '';
@@ -44,6 +46,7 @@ export async function POST(req: NextRequest) {
         region: user?.region || 'LA',
       });
       incidentId = incident.id;
+      logEvent({ event: 'incident_create_success', route: '/api/hotline/activate', incidentId, wolfId: user?.wolfId || 'WOLF-DEV-TEST' });
       // Fire-and-forget Discord notification; do not block activation on failures
       const base = getEnv().PUBLIC_BASE_URL || `${req.nextUrl.protocol}//${req.nextUrl.host}`;
       const presence = await getPresenceForRegion(user?.region || 'LA');
@@ -53,10 +56,10 @@ export async function POST(req: NextRequest) {
         baseUrl: base,
       }).catch(() => {});
     } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      logEvent({ event: 'incident_create_failed', route: '/api/hotline/activate', error: msg, authBypass, incidentsTable: process.env.INCIDENTS_TABLE_NAME || 'incidents' }, 'error');
       if (authBypass) {
         persisted = false;
-        const msg = e instanceof Error ? e.message : String(e);
-        logEvent({ event: 'incident_create_failed_bypass', route: '/api/hotline/activate', error: msg });
       } else {
         throw e;
       }
@@ -67,14 +70,14 @@ export async function POST(req: NextRequest) {
       if (persisted) {
         await updateIncident(incidentId, { callSid: call.sid });
       }
-      logEvent({ event: 'hotline_activated', route: '/api/hotline/activate', incidentId, wolfId: user?.wolfId || 'WOLF-DEV-TEST', callSid: call.sid, bypass: authBypass });
+      logEvent({ event: 'hotline_activated', route: '/api/hotline/activate', incidentId, wolfId: user?.wolfId || 'WOLF-DEV-TEST', callSid: call.sid, authBypass, persisted });
       return NextResponse.json({ incidentId, callSid: call.sid });
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Unknown error';
       if (persisted) {
         await updateIncident(incidentId, { status: 'resolved', resolvedAt: new Date().toISOString(), statusReason: 'failed' });
       }
-      logEvent({ event: 'call_failed', route: '/api/hotline/activate', incidentId, wolfId: user?.wolfId || 'WOLF-DEV-TEST', error: msg, bypass: authBypass }, 'error');
+      logEvent({ event: 'call_failed', route: '/api/hotline/activate', incidentId, wolfId: user?.wolfId || 'WOLF-DEV-TEST', error: msg, authBypass, persisted }, 'error');
       return NextResponse.json({ error: 'Call initiation failed' }, { status: 502 });
     }
   } catch (e: unknown) {
