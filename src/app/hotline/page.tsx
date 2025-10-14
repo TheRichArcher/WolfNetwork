@@ -95,7 +95,10 @@ const HotlinePage = () => {
         .then((j) => {
           if (!j || cancelled) return;
           const twilioStatus: string | undefined = j.twilioStatus;
-          const active: boolean = incidentId ? (j?.status === 'active' || twilioStatus === 'ringing' || twilioStatus === 'in-progress' || twilioStatus === 'answered') : Boolean(j.active);
+          const statusStr = typeof j?.status === 'string' ? j.status.toLowerCase() : '';
+          const active: boolean = incidentId
+            ? (statusStr === 'active' || statusStr === 'initiated' || twilioStatus === 'ringing' || twilioStatus === 'in-progress' || twilioStatus === 'answered')
+            : Boolean(j.active);
           if (active) {
             if (!isActivated) setIsActivated(true);
             const s = (twilioStatus || '').toLowerCase();
@@ -117,10 +120,16 @@ const HotlinePage = () => {
                 setStatus('Idle');
               }, 8000);
             } else if (!twilioStatus) {
-              // No status available; ensure UI is reset
-              setIsActivated(false);
-              setIncidentId(null);
-              setStatus('Idle');
+              // If we have an incident and it's in 'initiated' state, keep UI in Connecting
+              if (statusStr === 'initiated') {
+                if (!isActivated) setIsActivated(true);
+                setStatus('Connecting…');
+              } else {
+                // No status available; ensure UI is reset only when not initiated
+                setIsActivated(false);
+                setIncidentId(null);
+                setStatus('Idle');
+              }
             }
           }
         })

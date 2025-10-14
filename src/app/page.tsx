@@ -156,7 +156,7 @@ export default function Home() {
         .then((j) => {
           if (!j || cancelled) return;
           setActiveSession(j);
-          if (j.active) {
+          if (j.active || String(j?.status || '').toLowerCase() === 'initiated') {
             if (hotlineStatus !== 'Connected to operator') setHotlineStatus('Connected to operator');
             if (isActivating) setIsActivating(false);
           } else {
@@ -171,8 +171,14 @@ export default function Home() {
               }
               endBannerTimerRef.current = window.setTimeout(() => setHotlineStatus('Idle'), 8000);
             } else if (!j.twilioStatus) {
-              setHotlineStatus('Idle');
-              if (isActivating) setIsActivating(false);
+              // Preserve Connecting state if backend is in 'initiated' phase without Twilio status yet
+              if (String(j?.status || '').toLowerCase() === 'initiated') {
+                if (hotlineStatus !== 'Connected to operator') setHotlineStatus('Connected to operator');
+                if (isActivating) setIsActivating(false);
+              } else {
+                setHotlineStatus('Idle');
+                if (isActivating) setIsActivating(false);
+              }
             }
           }
         })
