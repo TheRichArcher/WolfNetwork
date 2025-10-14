@@ -2,7 +2,7 @@ import Redis from 'ioredis';
 import { getEnv } from './env';
 
 const env = getEnv();
-let redis: Redis.Redis | null = null;
+let redis: Redis | null = null;
 
 export function getRedis() {
   if (!redis && env.REDIS_URL) {
