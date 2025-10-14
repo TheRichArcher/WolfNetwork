@@ -6,6 +6,7 @@ import SplashScreen from '@/components/SplashScreen';
 import Layout from '@/components/Layout';
 import CardCarousel from '@/components/CardCarousel';
 import HotlineButton from '@/components/HotlineButton';
+import posthog from 'posthog-js';
 
 export const dynamic = "force-dynamic";
 
