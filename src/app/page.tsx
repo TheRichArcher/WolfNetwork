@@ -24,7 +24,7 @@ export default function Home() {
   // Hotline long-press behavior (mirrors /hotline)
   const LONG_PRESS_MS = 1500;
   const [isActivating, setIsActivating] = useState(false);
-  const [hotlineStatus, setHotlineStatus] = useState('Idle');
+  const [hotlineStatus, setHotlineStatus] = useState('idle');
   const [hotlineError, setHotlineError] = useState<string | null>(null);
   const pressTimerRef = useRef<number | null>(null);
   const isPressingRef = useRef(false);
@@ -45,7 +45,7 @@ export default function Home() {
         const resp = await fetch('/api/activate-hotline', { method: 'POST' });
         const data = await resp.json();
         if (!resp.ok) throw new Error(data?.error || 'Activation failed');
-        setHotlineStatus('Connected to operator');
+        setHotlineStatus('Connected to Operator');
         setIsActivating(false);
         if ('vibrate' in navigator) navigator.vibrate([30, 50, 30]);
       } catch {
@@ -71,7 +71,7 @@ export default function Home() {
       clearTimeout(pressTimerRef.current);
       pressTimerRef.current = null;
     }
-    if (!isActivating) setHotlineStatus('Idle');
+    if (!isActivating) setHotlineStatus('idle');
   };
 
   useEffect(() => {
@@ -157,7 +157,7 @@ export default function Home() {
           if (!j || cancelled) return;
           setActiveSession(j);
           if (j.active || String(j?.status || '').toLowerCase() === 'initiated') {
-            if (hotlineStatus !== 'Connected to operator') setHotlineStatus('Connected to operator');
+            if (hotlineStatus !== 'Connected to Operator') setHotlineStatus('Connected to Operator');
             if (isActivating) setIsActivating(false);
           } else {
             const terminal = new Set(['completed', 'busy', 'no-answer', 'failed', 'canceled']);
@@ -169,14 +169,14 @@ export default function Home() {
                 window.clearTimeout(endBannerTimerRef.current);
                 endBannerTimerRef.current = null;
               }
-              endBannerTimerRef.current = window.setTimeout(() => setHotlineStatus('Idle'), 8000);
+              endBannerTimerRef.current = window.setTimeout(() => setHotlineStatus('idle'), 8000);
             } else if (!j.twilioStatus) {
               // Preserve Connecting state if backend is in 'initiated' phase without Twilio status yet
               if (String(j?.status || '').toLowerCase() === 'initiated') {
-                if (hotlineStatus !== 'Connected to operator') setHotlineStatus('Connected to operator');
+                if (hotlineStatus !== 'Connected to Operator') setHotlineStatus('Connected to Operator');
                 if (isActivating) setIsActivating(false);
               } else {
-                setHotlineStatus('Idle');
+                setHotlineStatus('idle');
                 if (isActivating) setIsActivating(false);
               }
             }

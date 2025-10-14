@@ -10,7 +10,7 @@ const LONG_PRESS_MS = 1500;
 const HotlinePage = () => {
   const [isActivated, setIsActivated] = useState(false);
   const [isActivating, setIsActivating] = useState(false);
-  const [status, setStatus] = useState('Idle');
+  const [status, setStatus] = useState('idle');
   const [incidentId, setIncidentId] = useState<string | null>(null);
   const [wolfId, setWolfId] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
@@ -49,7 +49,7 @@ const HotlinePage = () => {
       clearTimeout(pressTimerRef.current);
       pressTimerRef.current = null;
     }
-    if (!isActivated && !isActivating) setStatus('Idle');
+    if (!isActivated && !isActivating) setStatus('idle');
   };
 
   const activateHotline = async () => {
@@ -66,7 +66,7 @@ const HotlinePage = () => {
       try { posthog.capture('hotline_activated', { wolfId: data?.wolfId }); } catch {}
       if ('vibrate' in navigator) navigator.vibrate([30, 50, 30]);
     } catch (e: unknown) {
-      setStatus('Idle');
+      setStatus('idle');
       setIsActivated(false);
       setIsActivating(false);
       setError(e instanceof Error ? e.message : 'Unknown error');
@@ -105,7 +105,7 @@ const HotlinePage = () => {
             if (s === 'queued' || s === 'initiated' || s === 'ringing') setStatus('Connecting…');
             else setStatus('In Progress');
           } else {
-            // If call ended and we have a final status, show it briefly then reset to Idle
+            // If call ended and we have a final status, show it briefly then reset to idle
             if (twilioStatus && TERMINAL.has(twilioStatus)) {
               const duration = typeof j.durationSeconds === 'number' ? j.durationSeconds : undefined;
               const endedMsg = `Ended: ${twilioStatus}${typeof duration === 'number' ? ` (${duration}s)` : ''}`;
@@ -117,7 +117,7 @@ const HotlinePage = () => {
                 endMessageTimerRef.current = null;
               }
               endMessageTimerRef.current = window.setTimeout(() => {
-                setStatus('Idle');
+                setStatus('idle');
               }, 8000);
             } else if (!twilioStatus) {
               // If we have an incident and it's in 'initiated' state, keep UI in Connecting
@@ -128,7 +128,7 @@ const HotlinePage = () => {
                 // No status available; ensure UI is reset only when not initiated
                 setIsActivated(false);
                 setIncidentId(null);
-                setStatus('Idle');
+                setStatus('idle');
               }
             }
           }
