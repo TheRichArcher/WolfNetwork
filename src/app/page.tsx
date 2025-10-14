@@ -20,6 +20,7 @@ export default function Home() {
   const [packStatus, setPackStatus] = useState<string>('Pack Ready');
   const [partnersPresence, setPartnersPresence] = useState<Array<{ category: string; name: string; status: 'Active' | 'Rotating' | 'Offline' }>>([]);
   const [activeSession, setActiveSession] = useState<{ active: boolean; sessionSid?: string; incidentId?: string; operator?: string; startedAt?: string } | null>(null);
+  const [fallbackIncidentId, setFallbackIncidentId] = useState<string | null>(null);
 
   // Hotline long-press behavior (mirrors /hotline)
   const LONG_PRESS_MS = 1500;
@@ -46,6 +47,17 @@ export default function Home() {
         const data = await resp.json();
         if (!resp.ok) throw new Error(data?.error || 'Activation failed');
         setHotlineStatus('Connected to Operator');
+        try {
+          const newIncidentId: string | undefined = data?.incidentId;
+          if (newIncidentId) {
+            setActiveSession({ active: true, incidentId: newIncidentId });
+            setFallbackIncidentId(newIncidentId);
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('lastIncidentId', newIncidentId);
+              localStorage.setItem('lastIncidentSavedAt', String(Date.now()));
+            }
+          }
+        } catch {}
         setIsActivating(false);
         if ('vibrate' in navigator) navigator.vibrate([30, 50, 30]);
       } catch {
@@ -106,6 +118,23 @@ export default function Home() {
     };
   }, []);
 
+  // Load cached incidentId to enable fallback polling when not authenticated
+  useEffect(() => {
+    try {
+      if (typeof window === 'undefined') return;
+      const cachedId = localStorage.getItem('lastIncidentId');
+      const savedAtRaw = localStorage.getItem('lastIncidentSavedAt');
+      const savedAt = savedAtRaw ? parseInt(savedAtRaw, 10) : NaN;
+      const fresh = !isNaN(savedAt) && Date.now() - savedAt < 30 * 60 * 1000;
+      if (cachedId && fresh) {
+        setFallbackIncidentId(cachedId);
+      } else if (cachedId && !fresh) {
+        localStorage.removeItem('lastIncidentId');
+        localStorage.removeItem('lastIncidentSavedAt');
+      }
+    } catch {}
+  }, []);
+
   // load team
   useEffect(() => {
     let cancelled = false;
@@ -146,10 +175,23 @@ export default function Home() {
     };
   }, []);
 
-  // active session polling
+  // active session polling (with fallback to incidentId-based polling if unauthenticated)
   useEffect(() => {
     let cancelled = false;
     let timer: number | null = null;
+    const clearFallbackIfTerminal = (twilioStatus?: string | null) => {
+      const s = String(twilioStatus || '').toLowerCase();
+      const terminal = new Set(['completed', 'busy', 'no-answer', 'failed', 'canceled']);
+      if (terminal.has(s)) {
+        try {
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('lastIncidentId');
+            localStorage.removeItem('lastIncidentSavedAt');
+          }
+        } catch {}
+        setFallbackIncidentId(null);
+      }
+    };
     const load = () => {
       fetch('/api/me/active-session')
         .then(async (r) => (r.ok ? r.json() : null))
@@ -159,6 +201,15 @@ export default function Home() {
           if (j.active || String(j?.status || '').toLowerCase() === 'initiated') {
             if (hotlineStatus !== 'Connected to Operator') setHotlineStatus('Connected to Operator');
             if (isActivating) setIsActivating(false);
+            if (j.incidentId) {
+              setFallbackIncidentId(j.incidentId);
+              try {
+                if (typeof window !== 'undefined') {
+                  localStorage.setItem('lastIncidentId', j.incidentId);
+                  localStorage.setItem('lastIncidentSavedAt', String(Date.now()));
+                }
+              } catch {}
+            }
           } else {
             const terminal = new Set(['completed', 'busy', 'no-answer', 'failed', 'canceled']);
             if (j.twilioStatus && terminal.has(j.twilioStatus)) {
@@ -170,14 +221,36 @@ export default function Home() {
                 endBannerTimerRef.current = null;
               }
               endBannerTimerRef.current = window.setTimeout(() => setHotlineStatus('idle'), 8000);
+              clearFallbackIfTerminal(j.twilioStatus);
             } else if (!j.twilioStatus) {
               // Preserve Connecting state if backend is in 'initiated' phase without Twilio status yet
               if (String(j?.status || '').toLowerCase() === 'initiated') {
                 if (hotlineStatus !== 'Connected to Operator') setHotlineStatus('Connected to Operator');
                 if (isActivating) setIsActivating(false);
               } else {
-                setHotlineStatus('idle');
-                if (isActivating) setIsActivating(false);
+                // Fallback: if we have a cached incidentId, poll that directly
+                const id = fallbackIncidentId;
+                if (id) {
+                  fetch(`/api/incident/${encodeURIComponent(id)}`)
+                    .then(async (r) => (r.ok ? r.json() : null))
+                    .then((inc) => {
+                      if (!inc || cancelled) return;
+                      const s = String(inc.twilioStatus || '').toLowerCase();
+                      const inProgress = s === 'queued' || s === 'initiated' || s === 'ringing' || s === 'in-progress' || s === 'answered';
+                      const statusActive = String(inc.status || '').toLowerCase();
+                      if (inProgress || statusActive === 'active' || statusActive === 'initiated') {
+                        if (hotlineStatus !== 'Connected to Operator') setHotlineStatus('Connected to Operator');
+                        setActiveSession((prev) => ({ ...(prev || {}), active: true, incidentId: inc.id }));
+                      } else {
+                        setHotlineStatus('idle');
+                        clearFallbackIfTerminal(s);
+                      }
+                    })
+                    .catch(() => {});
+                } else {
+                  setHotlineStatus('idle');
+                  if (isActivating) setIsActivating(false);
+                }
               }
             }
           }
