@@ -300,6 +300,65 @@ export default function Home() {
   // fake relay latency by pinging a lightweight endpoint (or measure /api/me)
   // Removed unused latency probe effect
 
+  function formatDaysAgo(iso: string): string {
+    const then = new Date(iso).getTime();
+    const now = Date.now();
+    const days = Math.max(0, Math.floor((now - then) / (1000 * 60 * 60 * 24)));
+    return `${days} day${days === 1 ? '' : 's'} ago`;
+  }
+  function formatMinutesDiff(startIso: string, endIso: string): string {
+    const start = new Date(startIso).getTime();
+    const end = new Date(endIso).getTime();
+    const mins = Math.max(0, Math.round((end - start) / (1000 * 60)));
+    return `${mins} minute${mins === 1 ? '' : 's'}`;
+  }
+  async function activateHotline() {
+    setIsActivating(true);
+    setHotlineError(null);
+    try {
+      const r = await fetch('/api/hotline/activate', { method: 'POST' });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || 'Activation failed');
+      setFallbackIncidentId(j.incidentId || null);
+      try { posthog.capture('hotline_activated', { wolfId: j.wolfId }); } catch {}
+    } catch (e) {
+      setHotlineError(e instanceof Error ? e.message : 'Unknown error');
+    } finally {
+      setIsActivating(false);
+    }
+  }
+  async function endSession(setBusy = false) {
+    if (setBusy) setIsDeactivating(true);
+    const incidentId = activeSession?.incidentId || fallbackIncidentId;
+    const callSid = activeSession?.callSid;
+    if (!incidentId && !callSid) {
+      if (setBusy) setIsDeactivating(false);
+      return;
+    }
+    try {
+      const r = await fetch('/api/hotline/end-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ incidentId, callSid }),
+      });
+      if (r.ok) {
+        const res = await fetch('/api/me/active-session');
+        const j = await res.json().catch(() => ({ active: false }));
+        setActiveSession(j);
+      } else {
+        setHotlineError('Failed to end session');
+      }
+    } catch {
+      setHotlineError('Error ending session');
+    } finally {
+      if (setBusy) setIsDeactivating(false);
+    }
+  }
+  const isTerminal = (status: string | undefined) => {
+    const s = (status || '').toLowerCase();
+    return s === 'completed' || s === 'busy' || s === 'no-answer' || s === 'failed' || s === 'canceled';
+  };
+
   return (
     <div>
       {loading ? (
@@ -455,68 +514,5 @@ export default function Home() {
     </div>
   );
 }
-
-function formatDaysAgo(iso: string): string {
-  const then = new Date(iso).getTime();
-  const now = Date.now();
-  const days = Math.max(0, Math.floor((now - then) / (1000 * 60 * 60 * 24)));
-  return `${days} day${days === 1 ? '' : 's'} ago`;
-}
-
-function formatMinutesDiff(startIso: string, endIso: string): string {
-  const start = new Date(startIso).getTime();
-  const end = new Date(endIso).getTime();
-  const mins = Math.max(0, Math.round((end - start) / (1000 * 60)));
-  return `${mins} minute${mins === 1 ? '' : 's'}`;
-}
-
-async function activateHotline() {
-  setIsActivating(true);
-  setHotlineError(null);
-  try {
-    const r = await fetch('/api/hotline/activate', { method: 'POST' });
-    const j = await r.json();
-    if (!r.ok) throw new Error(j.error || 'Activation failed');
-    setFallbackIncidentId(j.incidentId || null);
-    try { posthog.capture('hotline_activated', { wolfId: j.wolfId }); } catch {}
-  } catch (e) {
-    setHotlineError(e instanceof Error ? e.message : 'Unknown error');
-  } finally {
-    setIsActivating(false);
-  }
-}
-
-async function endSession(setBusy = false) {
-  if (setBusy) setIsDeactivating(true);
-  const incidentId = activeSession?.incidentId || fallbackIncidentId;
-  const callSid = activeSession?.callSid;
-  if (!incidentId && !callSid) {
-    if (setBusy) setIsDeactivating(false);
-    return;
-  }
-  try {
-    const r = await fetch('/api/hotline/end-session', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ incidentId, callSid }),
-    });
-    if (r.ok) {
-      const res = await fetch('/api/me/active-session');
-      const j = await res.json().catch(() => ({ active: false }));
-      setActiveSession(j);
-    } else {
-      setHotlineError('Failed to end session');
-    }
-  } catch {
-    setHotlineError('Error ending session');
-  } finally {
-    if (setBusy) setIsDeactivating(false);
-  }
-}
-
-const isTerminal = (status: string | undefined) => {
-  const s = (status || '').toLowerCase();
-  return s === 'completed' || s === 'busy' || s === 'no-answer' || s === 'failed' || s === 'canceled';
-};
 
 
