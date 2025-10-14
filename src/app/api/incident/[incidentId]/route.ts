@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { findIncidentById } from '@/lib/db';
 
 export const runtime = 'nodejs';
 
-export async function GET(_req: NextRequest, { params }: { params: { incidentId: string } }) {
+export async function GET(_req: Request, { params }: { params: { incidentId: string } }) {
   try {
     const incidentId = String(params?.incidentId || '').trim();
     if (!incidentId) return NextResponse.json({ error: 'Missing incidentId' }, { status: 400 });
