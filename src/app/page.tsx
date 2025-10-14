@@ -302,15 +302,24 @@ export default function Home() {
                   <button
                     className="ml-4 px-3 py-2 rounded bg-alert text-main-text text-sm"
                     onClick={async () => {
-                      if (!activeSession?.sessionSid || !activeSession?.incidentId) return;
+                      const incidentId = activeSession?.incidentId;
+                      const callSid = (activeSession as unknown as { callSid?: string })?.callSid;
+                      if (!incidentId && !callSid) return;
                       try {
-                        const r = await fetch('/api/resolve-hotline', {
+                        const r = await fetch('/api/hotline/end-session', {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ sessionSid: activeSession.sessionSid, incidentId: activeSession.incidentId }),
+                          body: JSON.stringify({ incidentId, callSid }),
                         });
                         if (r.ok) {
-                          setActiveSession({ active: false });
+                          // Refresh active session state to confirm cleared
+                          try {
+                            const res = await fetch('/api/me/active-session');
+                            const j = await res.json().catch(() => ({ active: false }));
+                            setActiveSession(j && typeof j === 'object' ? j : { active: false });
+                          } catch {
+                            setActiveSession({ active: false });
+                          }
                         }
                       } catch {}
                     }}
