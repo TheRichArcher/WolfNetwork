@@ -11,6 +11,7 @@ const HotlinePage = () => {
   const [isActivated, setIsActivated] = useState(false);
   const [isActivating, setIsActivating] = useState(false);
   const [status, setStatus] = useState('Idle');
+  const [incidentId, setIncidentId] = useState<string | null>(null);
   const [wolfId, setWolfId] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const endMessageTimerRef = useRef<number | null>(null);
@@ -58,6 +59,7 @@ const HotlinePage = () => {
       const resp = await fetch('/api/activate-hotline', { method: 'POST' });
       const data = await resp.json();
       if (!resp.ok) throw new Error(data?.error || 'Activation failed');
+      if (data?.incidentId) setIncidentId(data.incidentId);
       setIsActivated(true);
       setIsActivating(false);
       setStatus('Connected');
@@ -87,15 +89,18 @@ const HotlinePage = () => {
     let timer: number | null = null;
     const TERMINAL = new Set(['completed', 'busy', 'no-answer', 'failed', 'canceled']);
     const load = () => {
-      fetch('/api/me/active-session')
+      const url = incidentId ? `/api/incident/${encodeURIComponent(incidentId)}` : '/api/me/active-session';
+      fetch(url)
         .then(async (r) => (r.ok ? r.json() : null))
         .then((j) => {
           if (!j || cancelled) return;
           const twilioStatus: string | undefined = j.twilioStatus;
-          const active: boolean = Boolean(j.active);
+          const active: boolean = incidentId ? (j?.status === 'active' || twilioStatus === 'ringing' || twilioStatus === 'in-progress' || twilioStatus === 'answered') : Boolean(j.active);
           if (active) {
             if (!isActivated) setIsActivated(true);
-            if (status !== 'Connected') setStatus('Connected');
+            const s = (twilioStatus || '').toLowerCase();
+            if (s === 'queued' || s === 'initiated' || s === 'ringing') setStatus('Connecting…');
+            else setStatus('In Progress');
           } else {
             // If call ended and we have a final status, show it briefly then reset to Idle
             if (twilioStatus && TERMINAL.has(twilioStatus)) {
@@ -103,6 +108,7 @@ const HotlinePage = () => {
               const endedMsg = `Ended: ${twilioStatus}${typeof duration === 'number' ? ` (${duration}s)` : ''}`;
               setStatus(endedMsg);
               setIsActivated(false);
+              setIncidentId(null);
               if (endMessageTimerRef.current) {
                 window.clearTimeout(endMessageTimerRef.current);
                 endMessageTimerRef.current = null;
@@ -113,6 +119,7 @@ const HotlinePage = () => {
             } else if (!twilioStatus) {
               // No status available; ensure UI is reset
               setIsActivated(false);
+              setIncidentId(null);
               setStatus('Idle');
             }
           }

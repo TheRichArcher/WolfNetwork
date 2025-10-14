@@ -23,22 +23,21 @@ export default function IncidentStatusPage(props: unknown) {
     let timer: number | null = null;
     const load = async () => {
       try {
-        const r = await fetch('/api/me/active-session');
+        const r = await fetch(`/api/incident/${encodeURIComponent(incidentId)}`);
         if (!r.ok) return;
         const j = await r.json();
         if (cancelled) return;
-        if (j && j.incidentId === incidentId) {
+        if (j && j.id) {
           setIncident({
-            id: j.incidentId,
+            id: j.id,
             wolfId: j.wolfId,
             status: j.status,
             twilioStatus: j.twilioStatus,
-            createdAt: j.startedAt,
-            resolvedAt: j.isTerminal ? j.startedAt : null,
+            createdAt: j.createdAt,
+            resolvedAt: j.resolvedAt,
             durationSeconds: j.durationSeconds,
           });
-        } else if (!j?.active) {
-          // Not active; keep minimal details
+        } else {
           setIncident((prev) => prev || { id: incidentId });
         }
         setLoading(false);
