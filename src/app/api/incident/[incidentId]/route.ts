@@ -3,9 +3,12 @@ import { findIncidentById } from '@/lib/db';
 
 export const runtime = 'nodejs';
 
-export async function GET(_req: Request, { params }: { params: { incidentId: string } }) {
+export async function GET(req: Request) {
   try {
-    const incidentId = String(params?.incidentId || '').trim();
+    const url = new URL(req.url);
+    const parts = url.pathname.split('/');
+    const idx = parts.findIndex((p) => p === 'incident');
+    const incidentId = idx >= 0 && parts[idx + 1] ? decodeURIComponent(parts[idx + 1]) : '';
     if (!incidentId) return NextResponse.json({ error: 'Missing incidentId' }, { status: 400 });
     const incident = await findIncidentById(incidentId);
     if (!incident) return NextResponse.json({ error: 'Not found' }, { status: 404 });
