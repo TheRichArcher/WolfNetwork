@@ -50,13 +50,17 @@ export default function SignupPage() {
       });
       const j = (await r.json().catch(() => ({}))) as { valid?: boolean; next?: string; error?: string };
       if (r.ok && j.valid) {
-        setMessage('Code accepted. Redirecting to sign in...');
+        setMessage('Code accepted. Redirecting...');
         try { if (typeof window !== 'undefined') localStorage.setItem('inviteValidated', '1'); } catch {}
-        // Prefer NextAuth signIn to forward login_hint/screen_hint to Auth0
-        await signIn('auth0', { callbackUrl: '/' }, {
-          login_hint: email,
-          screen_hint: 'signup',
-        });
+        // Determine whether to login or signup based on Auth0 user existence
+        const existsResp = await fetch(`/api/auth/check-email?email=${encodeURIComponent(email)}`, { cache: 'no-store' });
+        const existsJson = await existsResp.json().catch(() => ({})) as { exists?: boolean };
+        const exists = existsResp.ok && !!existsJson.exists;
+        if (exists) {
+          await signIn('auth0', { callbackUrl: '/' }, { login_hint: email });
+        } else {
+          await signIn('auth0', { callbackUrl: '/' }, { login_hint: email, screen_hint: 'signup' });
+        }
       } else {
         setError(j.error || 'Invalid code');
       }

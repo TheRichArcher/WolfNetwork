@@ -30,6 +30,9 @@ export type Env = {
   AUTH_DEV_BYPASS?: string;
   DEV_CALLER_E164?: string;
   REDIS_URL?: string;
+  AUTH0_MGMT_CLIENT_ID?: string;
+  AUTH0_MGMT_CLIENT_SECRET?: string;
+  AUTH0_MGMT_AUDIENCE?: string;
 };
 
 // Only enforce the minimal env required for core server operations.
@@ -72,6 +75,9 @@ export function getEnv(): Env {
     AUTH_DEV_BYPASS: process.env.AUTH_DEV_BYPASS,
     DEV_CALLER_E164: process.env.DEV_CALLER_E164,
     REDIS_URL: process.env.REDIS_URL,
+    AUTH0_MGMT_CLIENT_ID: process.env.AUTH0_MGMT_CLIENT_ID,
+    AUTH0_MGMT_CLIENT_SECRET: process.env.AUTH0_MGMT_CLIENT_SECRET,
+    AUTH0_MGMT_AUDIENCE: process.env.AUTH0_MGMT_AUDIENCE,
   };
 
   const isProd = process.env.NODE_ENV === 'production';
