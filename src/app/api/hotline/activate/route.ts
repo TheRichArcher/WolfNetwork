@@ -45,7 +45,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    const toNumber = user?.phoneEncrypted ? decryptSecret(user.phoneEncrypted) : process.env.DEV_CALLER_E164 || '';
+    let toNumber = user?.phoneEncrypted ? decryptSecret(user.phoneEncrypted) : (process.env.DEV_CALLER_E164 || '');
+    if (!toNumber) {
+      // Allow dev fallback for test/bypass users to validate hotline flow end-to-end
+      const bypassSet = (process.env.BIOMETRIC_BYPASS_EMAILS || '')
+        .split(',')
+        .map((s) => s.trim().toLowerCase())
+        .filter(Boolean);
+      const bypassUser = email && bypassSet.includes(email.toLowerCase());
+      const devFallback = typeof process.env.DEV_CALLER_E164 === 'string' && process.env.DEV_CALLER_E164.length > 0;
+      if (bypassUser && devFallback) {
+        toNumber = process.env.DEV_CALLER_E164 as string;
+        logEvent({ event: 'hotline_activate_dev_fallback', route: '/api/hotline/activate', email, wolfId: user?.wolfId, tier: user?.tier, region: user?.region, to: toNumber });
+      }
+    }
     if (!toNumber) {
       const hasEnc = typeof user?.phoneEncrypted === 'string' && user?.phoneEncrypted.length > 0;
       const devFallback = typeof process.env.DEV_CALLER_E164 === 'string' && process.env.DEV_CALLER_E164.length > 0;
