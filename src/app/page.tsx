@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import SplashScreen from '@/components/SplashScreen';
 import Layout from '@/components/Layout';
 import CardCarousel from '@/components/CardCarousel';
@@ -11,6 +13,18 @@ import posthog from 'posthog-js';
 export const dynamic = "force-dynamic";
 
 export default function Home() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/api/auth/signin');
+    }
+  }, [status, router]);
+
+  // While we check session, avoid flicker
+  if (status === 'loading') return null;
+
   const [loading, setLoading] = useState(true);
   const [userTier, setUserTier] = useState<string | null>(null);
   const [wolfId, setWolfId] = useState<string>('');
