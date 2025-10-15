@@ -35,6 +35,7 @@ export type IncidentRecord = {
 const USERS_TABLE = process.env.USERS_TABLE_NAME || 'users';
 const USERS_TABLE_ALT = USERS_TABLE === 'users' ? 'Users' : USERS_TABLE === 'Users' ? 'users' : undefined;
 const INCIDENTS_TABLE = process.env.INCIDENTS_TABLE_NAME || 'incidents';
+const CODES_TABLE = process.env.CODES_TABLE_NAME || 'codes';
 
 function getBase() {
   const env = getEnv();
@@ -398,6 +399,37 @@ export async function getUserSecurityFlagsByEmail(email: string): Promise<{ twoF
     profileVerified: val('profileVerified') || false,
     hasPin: val('securePIN') || val('hasPin') || false,
   };
+}
+
+export async function generateUniqueWolfId(params: { tier: 'Silver' | 'Gold' | 'Platinum'; maxAttempts?: number }): Promise<string> {
+  const base = getBase();
+  const users = base(USERS_TABLE);
+  const prefix = params.tier.toUpperCase();
+  const attempts = params.maxAttempts || 10;
+  for (let i = 0; i < attempts; i++) {
+    const suffix = crypto.randomUUID().slice(0, 4).toUpperCase();
+    const candidate = `WOLF-${prefix}-${suffix}`;
+    const exists = await users
+      .select({ filterByFormula: `{wolfId} = '${candidate}'`, maxRecords: 1 })
+      .firstPage();
+    if (exists.length === 0) return candidate;
+  }
+  // Fallback to timestamp-based suffix if random collisions occur repeatedly
+  const fallback = `WOLF-${prefix}-${Date.now().toString().slice(-6)}`;
+  return fallback;
+}
+
+export async function auditCodeWithWolfId(params: { code: string; wolfId: string }): Promise<void> {
+  try {
+    const base = getBase();
+    const table = base(CODES_TABLE);
+    const records = await table.select({ filterByFormula: `{code} = '${params.code}'`, maxRecords: 1 }).firstPage();
+    if (records.length === 0) return;
+    const rec = records[0];
+    await table.update([{ id: rec.id, fields: { wolfId: params.wolfId } }]);
+  } catch {
+    // best-effort; ignore audit failures
+  }
 }
 
 

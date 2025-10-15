@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { checkRateLimit } from '@/lib/rateLimit';
-import { upsertUserBasic, validateCompedCode } from '@/lib/db';
+import { upsertUserBasic, validateCompedCode, generateUniqueWolfId, auditCodeWithWolfId } from '@/lib/db';
 import { logEvent } from '@/lib/log';
 
 export async function POST(req: NextRequest) {
@@ -23,8 +23,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ valid: false, error: 'Invalid code' }, { status: 200 });
     }
 
-    if (!res.wolfId || !res.tier) {
-      logEvent({ event: 'comped_code_metadata_missing', code: rawCode, hasWolfId: !!res.wolfId, hasTier: !!res.tier });
+    let wolfId = res.wolfId;
+    const tier = res.tier || 'Silver';
+
+    if (!wolfId || wolfId.trim().length === 0) {
+      wolfId = await generateUniqueWolfId({ tier });
+      logEvent({ event: 'wolfid_generated_from_code', code: rawCode, wolfId, tier });
+      // Best-effort audit back to codes table
+      auditCodeWithWolfId({ code: rawCode, wolfId }).catch(() => {});
     }
 
     // Mark user as approved and attribute source
@@ -32,8 +38,8 @@ export async function POST(req: NextRequest) {
       email: rawEmail,
       status: 'approved',
       source: `comped_code:${rawCode}`,
-      wolfId: res.wolfId,
-      tier: res.tier,
+      wolfId,
+      tier,
     });
 
     return NextResponse.json({ valid: true, next: '/api/auth/signin' });
