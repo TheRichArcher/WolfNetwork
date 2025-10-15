@@ -18,7 +18,12 @@ export default function Home() {
 
   useEffect(() => {
     if (status === 'unauthenticated') {
-      router.push('/api/auth/signin');
+      try {
+        const validated = typeof window !== 'undefined' && localStorage.getItem('inviteValidated') === '1';
+        router.push(validated ? '/api/auth/signin' : '/signup');
+      } catch {
+        router.push('/signup');
+      }
     }
   }, [status, router]);
 

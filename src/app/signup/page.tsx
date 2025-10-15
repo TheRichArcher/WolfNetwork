@@ -50,6 +50,7 @@ export default function SignupPage() {
       const j = (await r.json().catch(() => ({}))) as { valid?: boolean; next?: string; error?: string };
       if (r.ok && j.valid) {
         setMessage('Code accepted. Redirecting to sign in...');
+        try { if (typeof window !== 'undefined') localStorage.setItem('inviteValidated', '1'); } catch {}
         const next = j.next || '/api/auth/signin';
         setTimeout(() => {
           window.location.href = next;
