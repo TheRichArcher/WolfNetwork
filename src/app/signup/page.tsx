@@ -53,11 +53,10 @@ export default function SignupPage() {
         setMessage('Code accepted. Redirecting to sign in...');
         try { if (typeof window !== 'undefined') localStorage.setItem('inviteValidated', '1'); } catch {}
         // Prefer NextAuth signIn to forward login_hint/screen_hint to Auth0
-        await signIn('auth0', {
-          callbackUrl: '/',
+        await signIn('auth0', { callbackUrl: '/' }, {
           login_hint: email,
           screen_hint: 'signup',
-        } as any);
+        });
       } else {
         setError(j.error || 'Invalid code');
       }
