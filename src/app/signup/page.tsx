@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { signIn } from 'next-auth/react';
 import Layout from '@/components/Layout';
 
 export default function SignupPage() {
@@ -51,10 +52,12 @@ export default function SignupPage() {
       if (r.ok && j.valid) {
         setMessage('Code accepted. Redirecting to sign in...');
         try { if (typeof window !== 'undefined') localStorage.setItem('inviteValidated', '1'); } catch {}
-        const next = j.next || '/api/auth/signin';
-        setTimeout(() => {
-          window.location.href = next;
-        }, 800);
+        // Prefer NextAuth signIn to forward login_hint/screen_hint to Auth0
+        await signIn('auth0', {
+          callbackUrl: '/',
+          login_hint: email,
+          screen_hint: 'signup',
+        } as any);
       } else {
         setError(j.error || 'Invalid code');
       }
