@@ -26,20 +26,42 @@ export async function POST(req: NextRequest) {
     const email = typeof token?.email === 'string' ? token.email : undefined;
     const authBypass = process.env.AUTH_DEV_BYPASS === 'true';
     logEvent({ event: 'hotline_activate_request', route: '/api/hotline/activate', authBypass, hasEmail: Boolean(email), incidentsTable: process.env.INCIDENTS_TABLE_NAME || 'incidents' });
-    if (!email && !authBypass) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!email && !authBypass) {
+      logEvent({ event: 'hotline_activate_unauthorized', route: '/api/hotline/activate' }, 'warn');
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     // Apply rate limiting to prevent abuse
     if (!await checkRateLimit(`hotline:activate:${email}`, 4)) {
+      logEvent({ event: 'hotline_activate_rate_limited', route: '/api/hotline/activate', email: email || undefined }, 'warn');
       return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
     }
 
     // Lookup user and decrypt phone
     const user = email ? await findUserBySessionEmail(email) : null;
     logEvent({ event: 'hotline_user_lookup', route: '/api/hotline/activate', found: Boolean(user), wolfId: user?.wolfId, tier: user?.tier, region: user?.region });
-    if (!user && !authBypass) return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    if (!user && !authBypass) {
+      logEvent({ event: 'hotline_user_missing', route: '/api/hotline/activate', email: email || undefined }, 'warn');
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
 
     const toNumber = user?.phoneEncrypted ? decryptSecret(user.phoneEncrypted) : process.env.DEV_CALLER_E164 || '';
-    if (!toNumber) return NextResponse.json({ error: 'Phone not configured' }, { status: 400 });
+    if (!toNumber) {
+      const hasEnc = typeof user?.phoneEncrypted === 'string' && user?.phoneEncrypted.length > 0;
+      const devFallback = typeof process.env.DEV_CALLER_E164 === 'string' && process.env.DEV_CALLER_E164.length > 0;
+      logEvent({
+        event: 'hotline_activate_phone_missing',
+        route: '/api/hotline/activate',
+        email: email || undefined,
+        hasPhoneEncrypted: hasEnc,
+        devFallbackConfigured: devFallback,
+        wolfId: user?.wolfId,
+        tier: user?.tier,
+        region: user?.region,
+        authBypass,
+      }, 'warn');
+      return NextResponse.json({ error: 'Phone not configured' }, { status: 400 });
+    }
 
     const env = getEnv();
     const base = env.PUBLIC_BASE_URL || `${req.nextUrl.protocol}//${req.nextUrl.host}`;

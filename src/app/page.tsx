@@ -115,6 +115,40 @@ export default function Home() {
   // Redirect in effect; while unauthenticated or loading, render nothing
   const shouldBlock = status === 'loading' || status === 'unauthenticated';
 
+  // Post-auth: if we have a pending phone from signup, submit it to /api/me/phone
+  useEffect(() => {
+    if (status !== 'authenticated') return;
+    if (typeof window === 'undefined') return;
+    const pending = localStorage.getItem('pendingPhoneE164');
+    if (!pending) return;
+    const e164 = /^\+[1-9]\d{6,14}$/;
+    if (!e164.test(pending)) {
+      localStorage.removeItem('pendingPhoneE164');
+      return;
+    }
+    (async () => {
+      try {
+        const r = await fetch('/api/me/phone', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phoneE164: pending }),
+        });
+        if (r.status === 403) {
+          // Biometric required; redirect preserving return path
+          router.replace(`/biometric?next=${encodeURIComponent('/')}`);
+          return;
+        }
+        if (!r.ok) {
+          // If rate-limited or other error, keep pending for retry later
+          return;
+        }
+        localStorage.removeItem('pendingPhoneE164');
+      } catch {
+        // transient network error; leave pending to retry later
+      }
+    })();
+  }, [status, router]);
+
   // load identity and region
   useEffect(() => {
     let cancelled = false;
