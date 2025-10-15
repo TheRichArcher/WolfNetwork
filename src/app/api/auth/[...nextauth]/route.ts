@@ -14,7 +14,7 @@ const handler = NextAuth({
       issuer: process.env.AUTH0_DOMAIN ? `https://${process.env.AUTH0_DOMAIN}` : undefined,
       clientId: process.env.AUTH0_CLIENT_ID!,
       clientSecret: process.env.AUTH0_CLIENT_SECRET!,
-      authorization: { params: { screen_hint: 'signup' } },
+      // Do not force signup globally; the invite flow will pass screen_hint when appropriate
     }),
   ],
   session: { strategy: "jwt" },
