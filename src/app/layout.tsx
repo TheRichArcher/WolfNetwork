@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Montserrat } from "next/font/google";
 import "./globals.css";
 import AnalyticsClient from "@/components/AnalyticsClient";
+import SessionProviderClient from "@/components/SessionProviderClient";
 
 const montserrat = Montserrat({
   subsets: ["latin"],
@@ -33,9 +34,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${montserrat.variable} font-sans antialiased bg-background text-main-text`}> 
-        <AnalyticsClient />
-        {children}
+      <body className={`${montserrat.variable} font-sans antialiased bg-background text-main-text`}>
+        <SessionProviderClient>
+          <AnalyticsClient />
+          {children}
+        </SessionProviderClient>
       </body>
     </html>
   );

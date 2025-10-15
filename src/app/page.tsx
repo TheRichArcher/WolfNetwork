@@ -22,8 +22,8 @@ export default function Home() {
     }
   }, [status, router]);
 
-  // While we check session, avoid flicker
-  if (status === 'loading') return null;
+  // While we check session or redirect, avoid rendering UI
+  if (status === 'loading' || status === 'unauthenticated') return null;
 
   const [loading, setLoading] = useState(true);
   const [userTier, setUserTier] = useState<string | null>(null);
