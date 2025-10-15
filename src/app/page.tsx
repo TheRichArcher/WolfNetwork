@@ -13,7 +13,7 @@ import posthog from 'posthog-js';
 export const dynamic = "force-dynamic";
 
 export default function Home() {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const router = useRouter();
 
   useEffect(() => {
@@ -21,9 +21,6 @@ export default function Home() {
       router.push('/api/auth/signin');
     }
   }, [status, router]);
-
-  // While we check session or redirect, avoid rendering UI
-  if (status === 'loading' || status === 'unauthenticated') return null;
 
   const [loading, setLoading] = useState(true);
   const [userTier, setUserTier] = useState<string | null>(null);
@@ -109,6 +106,9 @@ export default function Home() {
       // ignore read errors
     }
   }, []);
+
+  // Redirect in effect; while unauthenticated or loading, render nothing
+  const shouldBlock = status === 'loading' || status === 'unauthenticated';
 
   // load identity and region
   useEffect(() => {
@@ -376,155 +376,159 @@ export default function Home() {
 
   return (
     <div>
-      {loading ? (
-        <SplashScreen onFinished={() => setLoading(false)} />
-      ) : (
-        <Layout>
-          <div className="p-4 space-y-7">
-            <section className="bg-surface rounded-lg p-5 border border-border hover:border-cta/30 hover:bg-surface-2/40 transition-colors">
-              <div className="flex items-start justify-between">
-                <div>
-                  <h2 className="text-xl font-bold text-main-text">Crisis Hotline — Hold to Activate</h2>
-                  <p className="text-accent mt-1">Your Wolf ID: <span className="font-mono">{wolfId || '—'}</span> | Status: <span className="text-cta">{packStatus}</span></p>
-                </div>
-                {(process.env.NEXT_PUBLIC_APP_ENV !== 'production' || activeSession?.active) && (
-                  <Link
-                    href="/status"
-                    className="ml-4 inline-flex items-center gap-2 text-sm text-cta hover:opacity-90 border border-cta/30 rounded px-3 py-1"
-                    aria-label="View live hotline status"
-                  >
-                    Status
-                    <span aria-hidden>↗</span>
-                  </Link>
-                )}
-              </div>
-              {activeSession?.active ? (
-                <div className="mt-4 flex justify-center">
-                  <button className="w-24 h-24 rounded-full bg-green-600 text-main-text font-bold shadow-lg" disabled aria-disabled="true">
-                    Connected
-                  </button>
-                </div>
-              ) : (
-                <div className="mt-4 flex justify-center">
-                  <HotlineButton
-                    session={activeSession}
-                    isPressing={isPressing}
-                    isActivating={isActivating}
-                    isDeactivating={isDeactivating}
-                    holdProgress={holdProgress}
-                    onPointerDown={startPress}
-                    onPointerUp={endPress}
-                    onPointerLeave={endPress}
-                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') startPress(); }}
-                    onKeyUp={endPress}
-                  />
-                </div>
-              )}
-              {hotlineError && (
-                <div className="mt-2 text-xs text-red-400" role="alert" aria-live="polite">{hotlineError}</div>
-              )}
-            </section>
-
-            <section className="bg-surface rounded-lg p-5 border border-border hover:border-cta/30 hover:bg-surface-2/40 transition-colors">
-              <h2 className="text-lg font-semibold text-main-text">My Wolf Team</h2>
-              <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {(partnersPresence.length > 0 ? partnersPresence : team).map((m) => (
-                  <div key={`${m.category}-${m.name}`} className="flex items-center justify-between bg-surface-2 border border-border rounded px-3 py-2">
-                    <div className="text-main-text">
-                      <div className="text-sm">{m.category}</div>
-                      <div className="text-lg font-semibold">{m.name.split(' ')[0]}</div>
-                    </div>
-                    <div className={`text-xs ${m.status === 'Active' ? 'text-green-400' : m.status === 'Rotating' ? 'text-gray-300' : 'text-red-400'}`}>
-                      {m.status === 'Active' ? '🟢 Active' : m.status === 'Rotating' ? '⚪ Rotating' : '🔴 Offline'}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-
-            {activeSession?.active ? (
-              <section className="bg-surface rounded-lg p-5 border border-border hover:border-cta/30 hover:bg-surface-2/40 transition-colors">
-                <h2 className="text-lg font-semibold text-main-text">Active Session</h2>
-                <div className="mt-2 text-accent text-sm flex items-center justify-between">
-                  <div>
-                    <div>Operator: <span className="text-main-text">{activeSession.operator || 'Operator'}</span></div>
-                    <div className="mt-1">Started: {activeSession.startedAt ? new Date(activeSession.startedAt).toLocaleTimeString() : '—'}</div>
-                  </div>
-                  <button
-                    className="ml-4 px-3 py-2 rounded bg-alert text-main-text text-sm"
-                    onClick={() => endSession(false)}
-                  >
-                    End Session
-                  </button>
-                </div>
-              </section>
-            ) : null}
-
-            <section className="bg-surface rounded-lg p-5 border border-border hover:border-cta/30 hover:bg-surface-2/40 transition-colors">
-              <h2 className="text-lg font-semibold text-main-text">Last Activation</h2>
-              <div className="mt-2 text-accent text-sm">
-                {lastActivation?.createdAt ? (
-                  <>
+      {shouldBlock ? null : (
+        <>
+          {loading ? (
+            <SplashScreen onFinished={() => setLoading(false)} />
+          ) : (
+            <Layout>
+              <div className="p-4 space-y-7">
+                <section className="bg-surface rounded-lg p-5 border border-border hover:border-cta/30 hover:bg-surface-2/40 transition-colors">
+                  <div className="flex items-start justify-between">
                     <div>
-                      Last Activation: {formatDaysAgo(lastActivation.createdAt)}
+                      <h2 className="text-xl font-bold text-main-text">Crisis Hotline — Hold to Activate</h2>
+                      <p className="text-accent mt-1">Your Wolf ID: <span className="font-mono">{wolfId || '—'}</span> | Status: <span className="text-cta">{packStatus}</span></p>
                     </div>
-                    {lastActivation?.resolvedAt && (
-                      <div>
-                        Resolved in {formatMinutesDiff(lastActivation.createdAt!, lastActivation.resolvedAt)}
+                    {(process.env.NEXT_PUBLIC_APP_ENV !== 'production' || activeSession?.active) && (
+                      <Link
+                        href="/status"
+                        className="ml-4 inline-flex items-center gap-2 text-sm text-cta hover:opacity-90 border border-cta/30 rounded px-3 py-1"
+                        aria-label="View live hotline status"
+                      >
+                        Status
+                        <span aria-hidden>↗</span>
+                      </Link>
+                    )}
+                  </div>
+                  {activeSession?.active ? (
+                    <div className="mt-4 flex justify-center">
+                      <button className="w-24 h-24 rounded-full bg-green-600 text-main-text font-bold shadow-lg" disabled aria-disabled="true">
+                        Connected
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="mt-4 flex justify-center">
+                      <HotlineButton
+                        session={activeSession}
+                        isPressing={isPressing}
+                        isActivating={isActivating}
+                        isDeactivating={isDeactivating}
+                        holdProgress={holdProgress}
+                        onPointerDown={startPress}
+                        onPointerUp={endPress}
+                        onPointerLeave={endPress}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') startPress(); }}
+                        onKeyUp={endPress}
+                      />
+                    </div>
+                  )}
+                  {hotlineError && (
+                    <div className="mt-2 text-xs text-red-400" role="alert" aria-live="polite">{hotlineError}</div>
+                  )}
+                </section>
+
+                <section className="bg-surface rounded-lg p-5 border border-border hover:border-cta/30 hover:bg-surface-2/40 transition-colors">
+                  <h2 className="text-lg font-semibold text-main-text">My Wolf Team</h2>
+                  <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {(partnersPresence.length > 0 ? partnersPresence : team).map((m) => (
+                      <div key={`${m.category}-${m.name}`} className="flex items-center justify-between bg-surface-2 border border-border rounded px-3 py-2">
+                        <div className="text-main-text">
+                          <div className="text-sm">{m.category}</div>
+                          <div className="text-lg font-semibold">{m.name.split(' ')[0]}</div>
+                        </div>
+                        <div className={`text-xs ${m.status === 'Active' ? 'text-green-400' : m.status === 'Rotating' ? 'text-gray-300' : 'text-red-400'}`}>
+                          {m.status === 'Active' ? '🟢 Active' : m.status === 'Rotating' ? '⚪ Rotating' : '🔴 Offline'}
+                        </div>
                       </div>
+                    ))}
+                  </div>
+                </section>
+
+                {activeSession?.active ? (
+                  <section className="bg-surface rounded-lg p-5 border border-border hover:border-cta/30 hover:bg-surface-2/40 transition-colors">
+                    <h2 className="text-lg font-semibold text-main-text">Active Session</h2>
+                    <div className="mt-2 text-accent text-sm flex items-center justify-between">
+                      <div>
+                        <div>Operator: <span className="text-main-text">{activeSession.operator || 'Operator'}</span></div>
+                        <div className="mt-1">Started: {activeSession.startedAt ? new Date(activeSession.startedAt).toLocaleTimeString() : '—'}</div>
+                      </div>
+                      <button
+                        className="ml-4 px-3 py-2 rounded bg-alert text-main-text text-sm"
+                        onClick={() => endSession(false)}
+                      >
+                        End Session
+                      </button>
+                    </div>
+                  </section>
+                ) : null}
+
+                <section className="bg-surface rounded-lg p-5 border border-border hover:border-cta/30 hover:bg-surface-2/40 transition-colors">
+                  <h2 className="text-lg font-semibold text-main-text">Last Activation</h2>
+                  <div className="mt-2 text-accent text-sm">
+                    {lastActivation?.createdAt ? (
+                      <>
+                        <div>
+                          Last Activation: {formatDaysAgo(lastActivation.createdAt)}
+                        </div>
+                        {lastActivation?.resolvedAt && (
+                          <div>
+                            Resolved in {formatMinutesDiff(lastActivation.createdAt!, lastActivation.resolvedAt)}
+                          </div>
+                        )}
+                        {lastActivation?.operatorId && (
+                          <div>Operator {lastActivation.operatorId}</div>
+                        )}
+                      </>
+                    ) : (
+                      <div>No prior activations.</div>
                     )}
-                    {lastActivation?.operatorId && (
-                      <div>Operator {lastActivation.operatorId}</div>
-                    )}
-                  </>
-                ) : (
-                  <div>No prior activations.</div>
+                  </div>
+                </section>
+
+                <section className="bg-surface rounded-lg p-5 border border-border hover:border-cta/30 hover:bg-surface-2/40 transition-colors">
+                  <h2 className="text-lg font-semibold text-main-text">Wolf Readiness Score</h2>
+                  <div className="mt-2 flex items-center justify-between">
+                    <div className="flex-1 h-2 bg-surface-2 rounded mr-3">
+                      <div className="h-2 bg-cta rounded" style={{ width: `${readiness.percent}%` }} />
+                    </div>
+                    <div className="text-accent text-sm">Wolf Readiness: {readiness.percent}%</div>
+                  </div>
+                  <ul className="mt-3 space-y-1 text-sm text-accent">
+                    <li>{readiness.twoFA ? '✅ 2FA Enabled' : '⚠️ 2FA Not Enabled'}</li>
+                    <li>{readiness.profileVerified ? '✅ Profile Verified' : '⚠️ Profile Not Verified'}</li>
+                    <li>{readiness.hasPin ? '✅ Secure PIN Set' : '⚠️ Secure PIN Missing'}</li>
+                  </ul>
+                </section>
+
+                <section>
+                  <h2 className="text-2xl font-bold">At-a-Glance</h2>
+                  <div className="h-0.5 w-12 bg-cta mb-4" aria-hidden="true" />
+                  <CardCarousel />
+                </section>
+
+                {userTier === 'Platinum' && (
+                  <section className="bg-surface rounded-lg p-5 border border-border hover:border-cta/30 hover:bg-surface-2/40 transition-colors">
+                    <h2 className="text-lg font-semibold text-main-text">Platinum Tools</h2>
+                    <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3 text-accent text-sm">
+                      <div className="bg-surface-2 border border-border rounded px-3 py-3">
+                        <div className="font-semibold text-main-text">Secure Vault Access</div>
+                        <div>Incident and NDA archive</div>
+                      </div>
+                      <div className="bg-surface-2 border border-border rounded px-3 py-3">
+                        <div className="font-semibold text-main-text">Alias Number Pool</div>
+                        <div>Rotating relay numbers</div>
+                      </div>
+                      <div className="bg-surface-2 border border-border rounded px-3 py-3">
+                        <div className="font-semibold text-main-text">Direct Operator Channel</div>
+                        <div>Encrypted chat link</div>
+                      </div>
+                    </div>
+                  </section>
                 )}
               </div>
-            </section>
-
-            <section className="bg-surface rounded-lg p-5 border border-border hover:border-cta/30 hover:bg-surface-2/40 transition-colors">
-              <h2 className="text-lg font-semibold text-main-text">Wolf Readiness Score</h2>
-              <div className="mt-2 flex items-center justify-between">
-                <div className="flex-1 h-2 bg-surface-2 rounded mr-3">
-                  <div className="h-2 bg-cta rounded" style={{ width: `${readiness.percent}%` }} />
-                </div>
-                <div className="text-accent text-sm">Wolf Readiness: {readiness.percent}%</div>
-              </div>
-              <ul className="mt-3 space-y-1 text-sm text-accent">
-                <li>{readiness.twoFA ? '✅ 2FA Enabled' : '⚠️ 2FA Not Enabled'}</li>
-                <li>{readiness.profileVerified ? '✅ Profile Verified' : '⚠️ Profile Not Verified'}</li>
-                <li>{readiness.hasPin ? '✅ Secure PIN Set' : '⚠️ Secure PIN Missing'}</li>
-              </ul>
-            </section>
-
-            <section>
-              <h2 className="text-2xl font-bold">At-a-Glance</h2>
-              <div className="h-0.5 w-12 bg-cta mb-4" aria-hidden="true" />
-              <CardCarousel />
-            </section>
-
-            {userTier === 'Platinum' && (
-              <section className="bg-surface rounded-lg p-5 border border-border hover:border-cta/30 hover:bg-surface-2/40 transition-colors">
-                <h2 className="text-lg font-semibold text-main-text">Platinum Tools</h2>
-                <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3 text-accent text-sm">
-                  <div className="bg-surface-2 border border-border rounded px-3 py-3">
-                    <div className="font-semibold text-main-text">Secure Vault Access</div>
-                    <div>Incident and NDA archive</div>
-                  </div>
-                  <div className="bg-surface-2 border border-border rounded px-3 py-3">
-                    <div className="font-semibold text-main-text">Alias Number Pool</div>
-                    <div>Rotating relay numbers</div>
-                  </div>
-                  <div className="bg-surface-2 border border-border rounded px-3 py-3">
-                    <div className="font-semibold text-main-text">Direct Operator Channel</div>
-                    <div>Encrypted chat link</div>
-                  </div>
-                </div>
-              </section>
-            )}
-          </div>
-        </Layout>
+            </Layout>
+          )}
+        </>
       )}
     </div>
   );
