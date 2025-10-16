@@ -173,21 +173,33 @@ export async function POST(req: NextRequest) {
       });
       incidentId = incident.id;
       logEvent({ event: 'incident_create_success', route: '/api/hotline/activate', incidentId, wolfId: user?.wolfId || 'WOLF-DEV-TEST' });
-      // Fire-and-forget Discord notification; do not block activation on failures
-      const base = getEnv().PUBLIC_BASE_URL || `${req.nextUrl.protocol}//${req.nextUrl.host}`;
-      const presence = await getPresenceForRegion(user?.region || 'LA');
-      notifyDiscordOnIncident({
-        incident: { id: incidentId, wolfId: user?.wolfId || 'WOLF-DEV-TEST', tier: user?.tier, region: user?.region },
-        presence,
-        baseUrl: base,
-      }).catch(() => {});
-      const hasPresence = Array.isArray(presence) && presence.some((p) => p.status === 'Active');
-      if (hasPresence) {
-        const op = await getAvailableOperator(user?.region || 'US');
-        if (op) {
-          await updateIncident(incidentId, { operatorId: op.id, operatorPhone: op.phone });
+      // Post-create side effects (best-effort only). Never block activation on failures here.
+      (async () => {
+        try {
+          const base = getEnv().PUBLIC_BASE_URL || `${req.nextUrl.protocol}//${req.nextUrl.host}`;
+          const presence = await getPresenceForRegion(user?.region || 'LA');
+          notifyDiscordOnIncident({
+            incident: { id: incidentId, wolfId: user?.wolfId || 'WOLF-DEV-TEST', tier: user?.tier, region: user?.region },
+            presence,
+            baseUrl: base,
+          }).catch(() => {});
+          const hasPresence = Array.isArray(presence) && presence.some((p) => p.status === 'Active');
+          if (hasPresence) {
+            try {
+              const op = await getAvailableOperator(user?.region || 'US');
+              if (op) {
+                await updateIncident(incidentId, { operatorId: op.id, operatorPhone: op.phone });
+              }
+            } catch (e: unknown) {
+              const msg = e instanceof Error ? e.message : String(e);
+              logEvent({ event: 'operator_assignment_failed', route: '/api/hotline/activate', incidentId, error: msg }, 'warn');
+            }
+          }
+        } catch (e: unknown) {
+          const msg = e instanceof Error ? e.message : String(e);
+          logEvent({ event: 'post_create_side_effect_error', route: '/api/hotline/activate', incidentId, error: msg }, 'warn');
         }
-      }
+      })();
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       logEvent({ event: 'incident_create_failed', route: '/api/hotline/activate', error: msg, authBypass, incidentsTable: process.env.INCIDENTS_TABLE_NAME || 'incidents' }, 'error');
