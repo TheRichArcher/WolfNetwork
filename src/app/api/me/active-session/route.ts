@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
     if (email) {
       incident = await getActiveIncidentForEmail(email);
     } else if (process.env.AUTH_DEV_BYPASS === 'true') {
-      const wolfId = process.env.DEV_WOLF_ID || 'WOLF-DEV-1234';
+      const wolfId = process.env.DEV_WOLF_ID || 'WOLF-DEV-TEST';
       incident = await getActiveIncidentForWolfId(wolfId);
     } else {
       return NextResponse.json({ active: false });
