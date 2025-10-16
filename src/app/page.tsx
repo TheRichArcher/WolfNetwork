@@ -411,7 +411,7 @@ export default function Home() {
                   {activeSession?.active ? (
                     <div className="mt-4 flex justify-center">
                       <button className="w-24 h-24 rounded-full bg-green-600 text-main-text font-bold shadow-lg" disabled aria-disabled="true">
-                        Connected
+                        {(activeSession?.twilioStatus || '').toLowerCase() === 'answered' || (activeSession?.twilioStatus || '').toLowerCase() === 'in-progress' || (activeSession?.twilioStatus || '').toLowerCase() === 'ringing' ? 'Connected' : 'Connecting…'}
                       </button>
                     </div>
                   ) : (
