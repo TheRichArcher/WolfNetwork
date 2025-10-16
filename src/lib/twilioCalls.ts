@@ -30,7 +30,8 @@ export async function createDirectCall(toE164: string, twimlUrl: string): Promis
   if (callbackUrl) {
     body.set('StatusCallback', callbackUrl);
     body.set('StatusCallbackMethod', 'POST');
-    body.set('StatusCallbackEvent', 'initiated ringing answered completed');
+    // Ask Twilio to notify for all key lifecycle events we use in UI/state
+    body.set('StatusCallbackEvent', 'initiated ringing answered in-progress completed busy no-answer failed canceled');
   }
   const resp = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Calls.json`, {
     method: 'POST',

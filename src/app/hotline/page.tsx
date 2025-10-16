@@ -62,7 +62,7 @@ const HotlinePage = () => {
       if (data?.incidentId) setIncidentId(data.incidentId);
       setIsActivated(true);
       setIsActivating(false);
-      setStatus('Connected');
+      setStatus('Connecting…');
       try { posthog.capture('hotline_activated', { wolfId: data?.wolfId }); } catch {}
       if ('vibrate' in navigator) navigator.vibrate([30, 50, 30]);
     } catch (e: unknown) {

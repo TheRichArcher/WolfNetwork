@@ -7,14 +7,13 @@ export async function GET() {
   const operator = getOperatorNumber();
 
   if (!operator) {
-    const xml = `<?xml version="1.0" encoding="UTF-8"?><Response><Say voice="Polly.Joanna">Wolf hotline cannot connect. Operator number missing.</Say></Response>`;
+    const xml = `<?xml version="1.0" encoding="UTF-8"?><Response><Pause length="1"/><Hangup/></Response>`;
     return new NextResponse(xml, { status: 500, headers: { "Content-Type": "text/xml" } });
   }
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="Polly.Joanna">Wolf connected. Hold for elite match.</Say>
-  <Dial callerId="${env.TWILIO_FROM_NUMBER ?? ""}">${operator}</Dial>
+  <Dial answerOnBridge="true" callerId="${env.TWILIO_FROM_NUMBER ?? ""}">${operator}</Dial>
 </Response>`;
 
   return new NextResponse(xml, { headers: { "Content-Type": "text/xml" } });
@@ -25,14 +24,13 @@ export async function POST() {
   const operator = getOperatorNumber();
 
   if (!operator) {
-    const xml = `<?xml version="1.0" encoding="UTF-8"?><Response><Say voice="Polly.Joanna">Wolf hotline cannot connect. Operator number missing.</Say></Response>`;
+    const xml = `<?xml version="1.0" encoding="UTF-8"?><Response><Pause length="1"/><Hangup/></Response>`;
     return new NextResponse(xml, { status: 500, headers: { "Content-Type": "text/xml" } });
   }
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="Polly.Joanna">Wolf connected. Hold for elite match.</Say>
-  <Dial callerId="${env.TWILIO_FROM_NUMBER ?? ""}">${operator}</Dial>
+  <Dial answerOnBridge="true" callerId="${env.TWILIO_FROM_NUMBER ?? ""}">${operator}</Dial>
 </Response>`;
 
   return new NextResponse(xml, { headers: { "Content-Type": "text/xml" } });

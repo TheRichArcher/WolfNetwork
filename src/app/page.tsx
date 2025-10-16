@@ -342,6 +342,7 @@ export default function Home() {
       if (!r.ok) throw new Error(j.error || 'Activation failed');
       setFallbackIncidentId(j.incidentId || null);
       try { posthog.capture('hotline_activated', { wolfId: j.wolfId }); } catch {}
+      // Do not set Connected immediately; rely on /api/me/active-session twilioStatus
     } catch (e) {
       setHotlineError(e instanceof Error ? e.message : 'Unknown error');
     } finally {

@@ -47,7 +47,17 @@ export async function POST(req: NextRequest) {
     }
 
     const isValidE164 = (input: string) => /^\+[1-9]\d{6,14}$/.test(input);
-    let toNumber = user?.phoneEncrypted ? decryptSecret(user.phoneEncrypted) : (process.env.DEV_CALLER_E164 || '');
+    let toNumber = '';
+    if (user?.phoneEncrypted) {
+      try {
+        const dec = decryptSecret(user.phoneEncrypted);
+        if (isValidE164(dec)) toNumber = dec;
+      } catch {}
+    }
+    if (!toNumber) {
+      const devCaller = (process.env.DEV_CALLER_E164 || '').trim();
+      if (isValidE164(devCaller)) toNumber = devCaller;
+    }
 
     // Attempt to use an assigned Twilio number from Airtable if personal phone missing
     if (!toNumber && email) {
@@ -60,10 +70,13 @@ export async function POST(req: NextRequest) {
           if (recs.length > 0) {
             const r = recs[0];
             const candidates = [
+              // Common assigned fields
               'twilioPhoneNumber', 'TwilioPhoneNumber', 'twilio_number', 'Twilio Number',
               'assignedNumber', 'AssignedNumber', 'Assigned Number',
               'aliasNumber', 'AliasNumber', 'Alias Number',
               'relayNumber', 'RelayNumber', 'Relay Number',
+              // Generic phone fields as fallback
+              'phone', 'Phone', 'e164', 'E164', 'number', 'Number', 'DirectLine', 'directLine',
             ];
             for (const key of candidates) {
               const v = r.get(key);
