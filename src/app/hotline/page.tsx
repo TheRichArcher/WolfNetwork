@@ -93,17 +93,13 @@ const HotlinePage = () => {
       fetch(url)
         .then(async (r) => (r.ok ? r.json() : null))
         .then((j) => {
-          if (!j || cancelled) return;
+      if (!j || cancelled) return;
           const twilioStatus: string | undefined = j.twilioStatus;
-          const statusStr = typeof j?.status === 'string' ? j.status.toLowerCase() : '';
-          const active: boolean = incidentId
-            ? (statusStr === 'active' || statusStr === 'initiated' || twilioStatus === 'ringing' || twilioStatus === 'in-progress' || twilioStatus === 'answered')
-            : Boolean(j.active);
-          if (active) {
+          const s = (twilioStatus || '').toLowerCase();
+          const inProgress = s === 'queued' || s === 'initiated' || s === 'ringing' || s === 'in-progress' || s === 'answered';
+          if (inProgress) {
             if (!isActivated) setIsActivated(true);
-            const s = (twilioStatus || '').toLowerCase();
-            if (s === 'queued' || s === 'initiated' || s === 'ringing') setStatus('Connecting…');
-            else setStatus('In Progress');
+            setStatus(s === 'ringing' || s === 'initiated' || s === 'queued' ? 'Connecting…' : 'In Progress');
           } else {
             // If call ended and we have a final status, show it briefly then reset to idle
             if (twilioStatus && TERMINAL.has(twilioStatus)) {
@@ -120,16 +116,10 @@ const HotlinePage = () => {
                 setStatus('idle');
               }, 8000);
             } else if (!twilioStatus) {
-              // If we have an incident and it's in 'initiated' state, keep UI in Connecting
-              if (statusStr === 'initiated') {
-                if (!isActivated) setIsActivated(true);
-                setStatus('Connecting…');
-              } else {
                 // No status available; ensure UI is reset only when not initiated
                 setIsActivated(false);
                 setIncidentId(null);
                 setStatus('idle');
-              }
             }
           }
         })

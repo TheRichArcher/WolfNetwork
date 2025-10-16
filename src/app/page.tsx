@@ -142,7 +142,8 @@ export default function Home() {
       const cachedId = localStorage.getItem('lastIncidentId');
       const savedAtRaw = localStorage.getItem('lastIncidentSavedAt');
       const savedAt = savedAtRaw ? parseInt(savedAtRaw, 10) : NaN;
-      const fresh = !isNaN(savedAt) && Date.now() - savedAt < 30 * 60 * 1000;
+      // Keep fallback very short-lived to avoid false positives on fresh page loads
+      const fresh = !isNaN(savedAt) && Date.now() - savedAt < 5 * 60 * 1000;
       if (cachedId && fresh) {
         setFallbackIncidentId(cachedId);
       } else if (cachedId && !fresh) {
@@ -215,7 +216,9 @@ export default function Home() {
         .then((j) => {
           if (!j || cancelled) return;
           setActiveSession(j);
-          if (j.active || String(j?.status || '').toLowerCase() === 'initiated') {
+          const s = String(j.twilioStatus || '').toLowerCase();
+          const inProgress = s === 'queued' || s === 'initiated' || s === 'ringing' || s === 'in-progress' || s === 'answered';
+          if (inProgress) {
             if (hotlineStatus !== 'Connected to Operator') setHotlineStatus('Connected to Operator');
             if (isActivating) setIsActivating(false);
             if (j.incidentId) {
@@ -240,11 +243,6 @@ export default function Home() {
               endBannerTimerRef.current = window.setTimeout(() => setHotlineStatus('idle'), 8000);
               clearFallbackIfTerminal(j.twilioStatus);
             } else if (!j.twilioStatus) {
-              // Preserve Connecting state if backend is in 'initiated' phase without Twilio status yet
-              if (String(j?.status || '').toLowerCase() === 'initiated') {
-                if (hotlineStatus !== 'Connected to Operator') setHotlineStatus('Connected to Operator');
-                if (isActivating) setIsActivating(false);
-              } else {
                 // Fallback: if we have a cached incidentId, poll that directly
                 const id = fallbackIncidentId;
                 if (id) {
@@ -268,7 +266,6 @@ export default function Home() {
                   setHotlineStatus('idle');
                   if (isActivating) setIsActivating(false);
                 }
-              }
             }
           }
         })
