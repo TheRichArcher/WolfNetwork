@@ -8,7 +8,7 @@ function extractStatusCode(err: unknown): number | undefined {
 }
 import { findUserBySessionEmail, findIncidentById, updateIncident, type IncidentRecord } from './db';
 import { notifyDiscordOnIncidentResolved } from './notify';
-import { getBase } from '@/lib/db'; // assuming db has getBase
+// Use local getBase declared below to avoid circular import/export
 
 export async function getAvailableOperator(region: string): Promise<{ id: string; phone: string } | null> {
   const base = getBase();
