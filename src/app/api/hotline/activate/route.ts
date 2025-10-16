@@ -181,6 +181,12 @@ export async function POST(req: NextRequest) {
         presence,
         baseUrl: base,
       }).catch(() => {});
+      if (presence.hasPresence) {
+        const op = await getAvailableOperator(user?.region || 'US');
+        if (op) {
+          await updateIncident(incidentId, { operatorId: op.id, operatorPhone: op.phone });
+        }
+      }
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       logEvent({ event: 'incident_create_failed', route: '/api/hotline/activate', error: msg, authBypass, incidentsTable: process.env.INCIDENTS_TABLE_NAME || 'incidents' }, 'error');

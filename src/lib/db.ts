@@ -30,6 +30,7 @@ export type IncidentRecord = {
   statusReason?: string;
   twilioStatus?: string;
   durationSeconds?: number;
+  operatorPhone?: string;
 };
 
 const USERS_TABLE = process.env.USERS_TABLE_NAME || 'users';
@@ -195,6 +196,7 @@ export async function createIncident(incident: IncidentRecord): Promise<Incident
     if (typeof incident.resolvedAt === 'string' && incident.resolvedAt) fields.resolvedAt = incident.resolvedAt;
     if (typeof incident.tier === 'string' && incident.tier) fields.tier = incident.tier;
     if (typeof incident.region === 'string' && incident.region) fields.region = incident.region;
+    if (typeof incident.operatorPhone === 'string' && incident.operatorPhone) fields.operatorPhone = incident.operatorPhone;
 
     // Debug: log outgoing Airtable payload to verify omitted fields
     try {
@@ -219,6 +221,7 @@ export async function createIncident(incident: IncidentRecord): Promise<Incident
       resolvedAt: (r.get('resolvedAt') as string) || undefined,
       tier: (r.get('tier') as IncidentRecord['tier']) || undefined,
       region: (r.get('region') as IncidentRecord['region']) || undefined,
+      operatorPhone: (r.get('operatorPhone') as string) || undefined,
     };
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
@@ -244,6 +247,7 @@ export async function updateIncident(id: string, fields: Partial<IncidentRecord>
     if (typeof fields.statusReason === 'string') projected.statusReason = fields.statusReason;
     if (typeof fields.twilioStatus === 'string') projected.twilioStatus = fields.twilioStatus;
     if (typeof fields.durationSeconds === 'number') projected.durationSeconds = fields.durationSeconds;
+    if (typeof fields.operatorPhone === 'string' && fields.operatorPhone) projected.operatorPhone = fields.operatorPhone;
     // Resolve whether the provided id is an Airtable Record ID (rec...) or our custom UUID in the {id} field
     let recordId = id;
     if (!/^rec[a-zA-Z0-9]{14}$/i.test(id)) {
@@ -288,6 +292,7 @@ export async function findIncidentByCallSid(callSid: string): Promise<IncidentRe
     statusReason: (getField<string>(r, ['statusReason', 'StatusReason']) as string) || undefined,
     twilioStatus: (getField<string>(r, ['twilioStatus', 'TwilioStatus']) as string) || undefined,
     durationSeconds: (getField<number>(r, ['durationSeconds', 'DurationSeconds']) as number) || undefined,
+    operatorPhone: (getField<string>(r, ['operatorPhone', 'OperatorPhone']) as string) || undefined,
     };
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
@@ -329,6 +334,7 @@ export async function findIncidentById(customIdOrRecId: string): Promise<Inciden
     statusReason: (r.get('statusReason') as string) || undefined,
     twilioStatus: (r.get('twilioStatus') as string) || undefined,
     durationSeconds: (r.get('durationSeconds') as number) || undefined,
+    operatorPhone: (r.get('operatorPhone') as string) || undefined,
     };
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
@@ -368,6 +374,7 @@ export async function findLastResolvedIncidentForWolfId(wolfId: string): Promise
       statusReason: (getField<string>(r, ['statusReason', 'StatusReason']) as string) || undefined,
       twilioStatus: (getField<string>(r, ['twilioStatus', 'TwilioStatus']) as string) || undefined,
       durationSeconds: (getField<number>(r, ['durationSeconds', 'DurationSeconds']) as number) || undefined,
+      operatorPhone: (getField<string>(r, ['operatorPhone', 'OperatorPhone']) as string) || undefined,
     };
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);

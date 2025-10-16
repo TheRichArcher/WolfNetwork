@@ -8,6 +8,22 @@ function extractStatusCode(err: unknown): number | undefined {
 }
 import { findUserBySessionEmail, findIncidentById, updateIncident, type IncidentRecord } from './db';
 import { notifyDiscordOnIncidentResolved } from './notify';
+import { getBase } from '@/lib/db'; // assuming db has getBase
+
+export async function getAvailableOperator(region: string): Promise<{ id: string; phone: string } | null> {
+  const base = getBase();
+  const table = base('operators'); // Assume 'operators' table exists with id, phone, region, status
+  const records = await table.select({
+    filterByFormula: `AND({region} = '${region}', {status} = 'available')`,
+    maxRecords: 1,
+  }).firstPage();
+  if (records.length === 0) return null;
+  const r = records[0];
+  return {
+    id: r.get('id') as string,
+    phone: r.get('phone') as string,
+  };
+}
 
 function getBase() {
   const env = getEnv();
