@@ -37,7 +37,9 @@ export async function GET(req: NextRequest) {
     const twilioStatus = (incident as unknown as { twilioStatus?: string }).twilioStatus || undefined;
     const s = String(twilioStatus || '').toLowerCase();
     const terminal = s === 'completed' || s === 'busy' || s === 'no-answer' || s === 'failed' || s === 'canceled';
-    const derivedActive = !terminal && (incident.status === 'active' || incident.status === 'initiated');
+    const inProgress = s === 'queued' || s === 'initiated' || s === 'ringing' || s === 'in-progress' || s === 'answered';
+    // Only report active when Twilio indicates an in-progress state, or backend explicitly marked 'active'
+    const derivedActive = !terminal && (incident.status === 'active' || inProgress);
     return NextResponse.json({
       active: derivedActive,
       status: incident.status,

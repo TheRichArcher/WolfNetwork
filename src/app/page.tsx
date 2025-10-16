@@ -253,7 +253,7 @@ export default function Home() {
                       const s = String(inc.twilioStatus || '').toLowerCase();
                       const inProgress = s === 'queued' || s === 'initiated' || s === 'ringing' || s === 'in-progress' || s === 'answered';
                       const statusActive = String(inc.status || '').toLowerCase();
-                      if (inProgress || statusActive === 'active' || statusActive === 'initiated') {
+                     if (inProgress || statusActive === 'active') {
                         if (hotlineStatus !== 'Connected to Operator') setHotlineStatus('Connected to Operator');
                         setActiveSession((prev) => ({ ...(prev || {}), active: true, incidentId: inc.id }));
                       } else {
