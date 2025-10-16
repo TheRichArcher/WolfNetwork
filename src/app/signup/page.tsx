@@ -98,16 +98,6 @@ export default function SignupPage() {
                 placeholder="you@example.com"
               />
             </div>
-            <div>
-              <label className="block text-sm text-accent">Phone (optional)</label>
-              <input
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="mt-1 w-full rounded bg-background border border-border px-3 py-2"
-                placeholder="+15551234567"
-              />
-            </div>
             <button disabled={loading} className="px-4 py-2 rounded bg-cta text-background font-semibold disabled:opacity-60">
               {loading ? 'Submitting...' : 'Request Access'}
             </button>
