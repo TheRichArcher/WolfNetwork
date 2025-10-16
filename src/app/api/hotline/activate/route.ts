@@ -10,6 +10,7 @@ import { notifyDiscordOnIncident } from '@/lib/notify';
 import { getPresenceForRegion } from '@/lib/incidents';
 import { z } from 'zod';
 import retry from 'p-retry';
+import Airtable from 'airtable';
 
 export async function POST(req: NextRequest) {
   try {
@@ -45,21 +46,85 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
+    const isValidE164 = (input: string) => /^\+[1-9]\d{6,14}$/.test(input);
     let toNumber = user?.phoneEncrypted ? decryptSecret(user.phoneEncrypted) : (process.env.DEV_CALLER_E164 || '');
+
+    // Attempt to use an assigned Twilio number from Airtable if personal phone missing
+    if (!toNumber && email) {
+      try {
+        const env = getEnv();
+        if (env.AIRTABLE_API_KEY && env.AIRTABLE_BASE_ID) {
+          const base = new Airtable({ apiKey: env.AIRTABLE_API_KEY }).base(env.AIRTABLE_BASE_ID);
+          const users = base(process.env.USERS_TABLE_NAME || 'users');
+          const recs = await users.select({ filterByFormula: `{email} = '${email}'`, maxRecords: 1 }).firstPage();
+          if (recs.length > 0) {
+            const r = recs[0];
+            const candidates = [
+              'twilioPhoneNumber', 'TwilioPhoneNumber', 'twilio_number', 'Twilio Number',
+              'assignedNumber', 'AssignedNumber', 'Assigned Number',
+              'aliasNumber', 'AliasNumber', 'Alias Number',
+              'relayNumber', 'RelayNumber', 'Relay Number',
+            ];
+            for (const key of candidates) {
+              const v = r.get(key);
+              if (typeof v === 'string' && isValidE164(v)) {
+                toNumber = v;
+                logEvent({ event: 'hotline_activate_using_assigned_number', route: '/api/hotline/activate', email, wolfId: user?.wolfId, tier: user?.tier, region: user?.region, to: toNumber });
+                break;
+              }
+            }
+          }
+        }
+      } catch {
+        // best-effort only
+      }
+    }
     if (!toNumber) {
-      // Allow dev fallback for test/bypass users to validate hotline flow end-to-end
+      // Allow dev fallback for test/bypass or non-prod users to validate hotline flow end-to-end
       const bypassSet = (process.env.BIOMETRIC_BYPASS_EMAILS || '')
         .split(',')
         .map((s) => s.trim().toLowerCase())
         .filter(Boolean);
       const bypassUser = email && bypassSet.includes(email.toLowerCase());
       const devFallback = typeof process.env.DEV_CALLER_E164 === 'string' && process.env.DEV_CALLER_E164.length > 0;
-      if (bypassUser && devFallback) {
+      const nonProd = process.env.NODE_ENV !== 'production';
+      if ((bypassUser || authBypass || nonProd) && devFallback) {
         toNumber = process.env.DEV_CALLER_E164 as string;
         logEvent({ event: 'hotline_activate_dev_fallback', route: '/api/hotline/activate', email, wolfId: user?.wolfId, tier: user?.tier, region: user?.region, to: toNumber });
       }
     }
     if (!toNumber) {
+      // As a last resort for supported tiers/flags, proceed without placing a call (incident-only activation)
+      const supportedTier = /gold|platinum/i.test(String(user?.tier || ''));
+      const bypassSet = (process.env.BIOMETRIC_BYPASS_EMAILS || '')
+        .split(',')
+        .map((s) => s.trim().toLowerCase())
+        .filter(Boolean);
+      const bypassUser = email && bypassSet.includes(email.toLowerCase());
+      if (bypassUser || authBypass || supportedTier) {
+        const env = getEnv();
+        const baseUrl = env.PUBLIC_BASE_URL || `${req.nextUrl.protocol}//${req.nextUrl.host}`;
+        // Create incident record and return without dialing
+        let incidentId = crypto.randomUUID();
+        try {
+          const incident = await createIncident({
+            id: incidentId,
+            wolfId: user?.wolfId || 'WOLF-DEV-TEST',
+            sessionSid: '',
+            status: 'initiated',
+            createdAt: new Date().toISOString(),
+            tier: user?.tier || 'Gold',
+            region: user?.region || 'LA',
+          });
+          incidentId = incident.id;
+          logEvent({ event: 'hotline_activated_no_user_phone', route: '/api/hotline/activate', incidentId, email, wolfId: user?.wolfId, tier: user?.tier, region: user?.region, baseUrl });
+          return NextResponse.json({ incidentId, callSid: null, note: 'Activated without user phone (no call placed)' });
+        } catch (e: unknown) {
+          const msg = e instanceof Error ? e.message : String(e);
+          logEvent({ event: 'hotline_activate_no_phone_incident_failed', route: '/api/hotline/activate', error: msg }, 'error');
+          return NextResponse.json({ error: 'Activation failed' }, { status: 500 });
+        }
+      }
       const hasEnc = typeof user?.phoneEncrypted === 'string' && user?.phoneEncrypted.length > 0;
       const devFallback = typeof process.env.DEV_CALLER_E164 === 'string' && process.env.DEV_CALLER_E164.length > 0;
       logEvent({
