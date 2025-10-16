@@ -7,7 +7,7 @@ import { getEnv } from '@/lib/env';
 import { logEvent } from '@/lib/log';
 import { checkRateLimit } from '@/lib/rateLimit';
 import { notifyDiscordOnIncident } from '@/lib/notify';
-import { getPresenceForRegion } from '@/lib/incidents';
+import { getPresenceForRegion, getAvailableOperator } from '@/lib/incidents';
 import { z } from 'zod';
 import retry from 'p-retry';
 import Airtable from 'airtable';
@@ -181,7 +181,8 @@ export async function POST(req: NextRequest) {
         presence,
         baseUrl: base,
       }).catch(() => {});
-      if (presence.hasPresence) {
+      const hasPresence = Array.isArray(presence) && presence.some((p) => p.status === 'Active');
+      if (hasPresence) {
         const op = await getAvailableOperator(user?.region || 'US');
         if (op) {
           await updateIncident(incidentId, { operatorId: op.id, operatorPhone: op.phone });
