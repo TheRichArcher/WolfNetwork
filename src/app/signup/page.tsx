@@ -7,7 +7,6 @@ import Layout from '@/components/Layout';
 export default function SignupPage() {
   const [mode, setMode] = useState<'invite' | 'comped'>('invite');
   const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -22,12 +21,11 @@ export default function SignupPage() {
       const r = await fetch('/api/signup/request-access', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email || undefined, phone: phone || undefined }),
+        body: JSON.stringify({ email: email || undefined }),
       });
       if (r.ok) {
         setMessage("Thanks! You'll be notified when we're ready to onboard new members.");
         setEmail('');
-        setPhone('');
       } else {
         const j = await r.json().catch(() => ({}));
         setError(j.error || 'Something went wrong');
@@ -43,12 +41,6 @@ export default function SignupPage() {
     setError(null);
     setMessage(null);
     try {
-      const trimmedPhone = (phone || '').trim();
-      const e164 = /^\+[1-9]\d{6,14}$/;
-      if (!e164.test(trimmedPhone)) {
-        setError('Enter a valid E.164 phone (e.g. +13105551234)');
-        return;
-      }
       const r = await fetch('/api/signup/comped-verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -57,14 +49,7 @@ export default function SignupPage() {
       const j = (await r.json().catch(() => ({}))) as { valid?: boolean; next?: string; error?: string };
       if (r.ok && j.valid) {
         setMessage('Code accepted. Redirecting...');
-        try {
-          if (typeof window !== 'undefined') {
-            localStorage.setItem('inviteValidated', '1');
-            // Stash phone to submit post-auth via /api/me/phone
-            localStorage.setItem('pendingPhoneE164', trimmedPhone);
-            localStorage.setItem('userPhoneE164', trimmedPhone);
-          }
-        } catch {}
+        try { if (typeof window !== 'undefined') localStorage.setItem('inviteValidated', '1'); } catch {}
         // Determine whether to login or signup based on Auth0 user existence
         const existsResp = await fetch(`/api/auth/check-email?email=${encodeURIComponent(email)}`, { cache: 'no-store' });
         const existsJson = await existsResp.json().catch(() => ({})) as { exists?: boolean };
@@ -137,17 +122,6 @@ export default function SignupPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 className="mt-1 w-full rounded bg-background border border-border px-3 py-2"
                 placeholder="you@example.com"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm text-accent">Phone (E.164)</label>
-              <input
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="mt-1 w-full rounded bg-background border border-border px-3 py-2"
-                placeholder="+15551234567"
                 required
               />
             </div>
