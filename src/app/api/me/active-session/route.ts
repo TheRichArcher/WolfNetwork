@@ -34,8 +34,12 @@ export async function GET(req: NextRequest) {
 
     const startedAt = incident.createdAt;
     const operator = incident.operatorId || 'Operator';
+    const twilioStatus = (incident as unknown as { twilioStatus?: string }).twilioStatus || undefined;
+    const s = String(twilioStatus || '').toLowerCase();
+    const terminal = s === 'completed' || s === 'busy' || s === 'no-answer' || s === 'failed' || s === 'canceled';
+    const derivedActive = !terminal && (incident.status === 'active' || incident.status === 'initiated');
     return NextResponse.json({
-      active: incident.status === 'active' || incident.status === 'initiated',
+      active: derivedActive,
       status: incident.status,
       sessionSid: incident.sessionSid,
       callSid: (incident as unknown as { callSid?: string }).callSid || undefined,
@@ -43,13 +47,9 @@ export async function GET(req: NextRequest) {
       wolfId: incident.wolfId,
       operator,
       startedAt,
-      twilioStatus: (incident as unknown as { twilioStatus?: string }).twilioStatus || undefined,
+      twilioStatus,
       durationSeconds: (incident as unknown as { durationSeconds?: number }).durationSeconds || undefined,
-      // For faster UI response, surface a derived terminal flag
-      isTerminal: ((): boolean => {
-        const s = String((incident as unknown as { twilioStatus?: string }).twilioStatus || '').toLowerCase();
-        return s === 'completed' || s === 'busy' || s === 'no-answer' || s === 'failed' || s === 'canceled';
-      })(),
+      isTerminal: terminal,
     });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);

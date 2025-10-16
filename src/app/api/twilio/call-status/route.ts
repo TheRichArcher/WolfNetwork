@@ -37,7 +37,10 @@ export async function POST(req: NextRequest) {
     }
 
     const callSid = params.get('CallSid') || '';
-    const callStatus = (params.get('CallStatus') || '').toLowerCase();
+    // Support both parent CallStatus and DialCallStatus from <Dial action="...">
+    const statusPrimary = (params.get('CallStatus') || '').toLowerCase();
+    const statusDial = (params.get('DialCallStatus') || '').toLowerCase();
+    const callStatus = statusPrimary || statusDial;
     const from = params.get('From') || '';
     const to = params.get('To') || '';
     const dur = params.get('CallDuration') || '';
