@@ -30,9 +30,9 @@ export async function POST(req: NextRequest) {
     }
 
     const fullUrl = `${process.env.PUBLIC_BASE_URL || `${url.protocol}//${url.host}`}${url.pathname}`;
-    // Allow signature bypass in non-production for local/dev testing to ensure cleanup flows work
+    // Enforce signature verification in production; in non-production, allow bypass for local/dev testing
     const sigOk = verifyTwilioSignature({ fullUrl, xSignature: xSig, formParams: params });
-    if (!sigOk && process.env.NODE_ENV === 'production' && process.env.TWILIO_SIGNATURE_BYPASS !== 'true') {
+    if (process.env.NODE_ENV === 'production' && !sigOk) {
       return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
     }
 
