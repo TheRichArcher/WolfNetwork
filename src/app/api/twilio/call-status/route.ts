@@ -39,6 +39,7 @@ export async function POST(req: NextRequest) {
     }
 
     const callSidRaw = params.get('CallSid') || '';
+    const dialCallSid = params.get('DialCallSid') || '';
     // When <Dial> bridges a call, status events may arrive with child CallSid while our incident stored parent SID.
     // Prefer CallSid, but fall back to ParentCallSid to locate the incident.
     const parentSid = params.get('ParentCallSid') || '';
@@ -53,9 +54,13 @@ export async function POST(req: NextRequest) {
     logEvent({ event: 'call_status_raw', route: '/api/twilio/call-status', callSid, callStatus, from, to, duration: dur });
     if (!callSid) return NextResponse.json({ ok: true });
 
+    // Try all relevant SIDs: parent call, direct CallSid, and Dial child
     let incident = await findIncidentByCallSid(callSid);
     if (!incident && parentSid && parentSid !== callSidRaw) {
       incident = await findIncidentByCallSid(parentSid);
+    }
+    if (!incident && dialCallSid) {
+      incident = await findIncidentByCallSid(dialCallSid);
     }
     // As a last resort during activation race, try to attach to the newest initiated incident without callSid
     if (!incident && (callStatus === 'initiated' || callStatus === 'ringing' || callStatus === 'answered')) {
@@ -84,7 +89,9 @@ export async function POST(req: NextRequest) {
         try {
           // activation update inline to avoid new helper; keep fields lowercased
           const now = new Date().toISOString();
-          const dur = params.get('CallDuration');
+          const durPrimary = params.get('CallDuration');
+          const durDial = params.get('DialCallDuration');
+          const dur = durPrimary || durDial;
           const durationSeconds = dur && /^\d+$/.test(dur) ? Number(dur) : undefined;
           // Use updateIncident via dynamic import to avoid circulars
           const { updateIncident } = await import('@/lib/db');
@@ -100,7 +107,9 @@ export async function POST(req: NextRequest) {
         }
       })();
     } else if (action?.kind === 'resolve') {
-      const dur = params.get('CallDuration');
+      const durPrimary = params.get('CallDuration');
+      const durDial = params.get('DialCallDuration');
+      const dur = durPrimary || durDial;
       const durationSeconds = dur && /^\d+$/.test(dur) ? Number(dur) : undefined;
       await resolveIncident({
         incidentId: incident.id,
