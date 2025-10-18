@@ -21,7 +21,8 @@ async function createTwilioCall(params: {
   if (callbackUrl) {
     body.set('StatusCallback', callbackUrl);
     body.set('StatusCallbackMethod', 'POST');
-    body.set('StatusCallbackEvent', 'initiated ringing answered completed');
+    // Request the full set of lifecycle events to keep UI and state in sync
+    body.set('StatusCallbackEvent', 'initiated ringing answered in-progress completed busy no-answer failed canceled');
   }
   const resp = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Calls.json`, {
     method: "POST",

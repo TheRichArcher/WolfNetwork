@@ -51,7 +51,8 @@ function computeLabel(session?: Session | null, isPressing?: boolean, isActivati
   if (!callSid && !session?.active && !isInProgress(status)) {
     return isPressing ? 'Hold…' : 'Idle\nHold to Activate';
   }
-  if (!status || status === 'queued' || status === 'initiated') {
+  // If we have no status but there is a callSid, assume dialing and show Calling
+  if ((!status && callSid) || status === 'queued' || status === 'initiated') {
     return 'Calling Operator…';
   }
   if (status === 'ringing' || status === 'in-progress' || status === 'answered') {

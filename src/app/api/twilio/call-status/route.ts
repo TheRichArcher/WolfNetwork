@@ -36,7 +36,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
     }
 
-    const callSid = params.get('CallSid') || '';
+    const callSidRaw = params.get('CallSid') || '';
+    // When <Dial> bridges a call, status events may arrive with child CallSid while our incident stored parent SID.
+    // Prefer CallSid, but fall back to ParentCallSid to locate the incident.
+    const parentSid = params.get('ParentCallSid') || '';
+    const callSid = callSidRaw || parentSid;
     // Support both parent CallStatus and DialCallStatus from <Dial action="...">
     const statusPrimary = (params.get('CallStatus') || '').toLowerCase();
     const statusDial = (params.get('DialCallStatus') || '').toLowerCase();
@@ -47,7 +51,10 @@ export async function POST(req: NextRequest) {
     logEvent({ event: 'call_status_raw', route: '/api/twilio/call-status', callSid, callStatus, from, to, duration: dur });
     if (!callSid) return NextResponse.json({ ok: true });
 
-    const incident = await findIncidentByCallSid(callSid);
+    let incident = await findIncidentByCallSid(callSid);
+    if (!incident && parentSid && parentSid !== callSidRaw) {
+      incident = await findIncidentByCallSid(parentSid);
+    }
     if (!incident) {
       // Nothing to update yet; log and accept
       logEvent({ event: 'call_status_orphan', route: '/api/twilio/call-status', callSid, callStatus });
