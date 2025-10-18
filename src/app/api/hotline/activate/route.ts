@@ -216,6 +216,7 @@ export async function POST(req: NextRequest) {
       call = await retry(() => createDirectCall(
         toNumber,
         twimlUrl,
+        { idempotencyKey: `incident:${incidentId}` }
       ), {
         retries: 3, // Retry up to 3 times on transient errors
         minTimeout: 1000,

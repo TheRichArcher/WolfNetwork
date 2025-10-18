@@ -29,7 +29,9 @@ export async function POST(req: NextRequest) {
       params = new URLSearchParams();
     }
 
-    const fullUrl = `${process.env.PUBLIC_BASE_URL || `${url.protocol}//${url.host}`}${url.pathname}`;
+    // IMPORTANT: Twilio signature must be computed with the exact URL Twilio POSTed to.
+    // Do not override host with PUBLIC_BASE_URL here; use the incoming request URL.
+    const fullUrl = `${url.protocol}//${url.host}${url.pathname}`;
     // Enforce signature verification in production; in non-production, allow bypass for local/dev testing
     const sigOk = verifyTwilioSignature({ fullUrl, xSignature: xSig, formParams: params });
     if (process.env.NODE_ENV === 'production' && !sigOk) {

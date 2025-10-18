@@ -16,7 +16,7 @@ function resolveBaseUrl(): string | undefined {
   return first;
 }
 
-export async function createDirectCall(toE164: string, twimlUrl: string): Promise<CreateCallResult> {
+export async function createDirectCall(toE164: string, twimlUrl: string, opts?: { idempotencyKey?: string }): Promise<CreateCallResult> {
   const env = getEnv();
   const accountSid = env.TWILIO_ACCOUNT_SID || '';
   const authToken = env.TWILIO_AUTH_TOKEN || '';
@@ -33,9 +33,13 @@ export async function createDirectCall(toE164: string, twimlUrl: string): Promis
     // Ask Twilio to notify for all key lifecycle events we use in UI/state
     body.set('StatusCallbackEvent', 'initiated ringing answered in-progress completed busy no-answer failed canceled');
   }
+  const headers: Record<string, string> = { Authorization: `Basic ${authHeader}`, 'Content-Type': 'application/x-www-form-urlencoded' };
+  if (opts?.idempotencyKey) {
+    headers['Idempotency-Key'] = opts.idempotencyKey;
+  }
   const resp = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Calls.json`, {
     method: 'POST',
-    headers: { Authorization: `Basic ${authHeader}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+    headers,
     body,
   });
   if (!resp.ok) {

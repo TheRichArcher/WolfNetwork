@@ -13,7 +13,9 @@ export async function GET() {
   }
 
   // Bridge the caller with the operator without any pre-roll message
-  const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<Response>\n  <Dial answerOnBridge="true" callerId="${env.TWILIO_FROM_NUMBER ?? ''}">${operator}</Dial>\n</Response>`;
+  // Include action callback to receive Dial final status even if parent CallStatus doesn't include duration
+  const actionUrl = `${env.PUBLIC_BASE_URL || ''}/api/twilio/call-status`;
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<Response>\n  <Dial answerOnBridge="true" callerId="${env.TWILIO_FROM_NUMBER ?? ''}" action="${actionUrl}" method="POST">${operator}</Dial>\n</Response>`;
   return new NextResponse(xml, { headers: { 'Content-Type': 'text/xml' } });
 }
 
@@ -26,7 +28,8 @@ export async function POST() {
     return new NextResponse(xml, { headers: { 'Content-Type': 'text/xml' } });
   }
 
-  const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<Response>\n  <Dial answerOnBridge="true" callerId="${env.TWILIO_FROM_NUMBER ?? ''}">${operator}</Dial>\n</Response>`;
+  const actionUrl2 = `${env.PUBLIC_BASE_URL || ''}/api/twilio/call-status`;
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<Response>\n  <Dial answerOnBridge="true" callerId="${env.TWILIO_FROM_NUMBER ?? ''}" action="${actionUrl2}" method="POST">${operator}</Dial>\n</Response>`;
   return new NextResponse(xml, { headers: { 'Content-Type': 'text/xml' } });
 }
 

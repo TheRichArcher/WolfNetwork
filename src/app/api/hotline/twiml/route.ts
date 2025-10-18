@@ -16,7 +16,8 @@ export async function GET(req: NextRequest) {
     return new NextResponse(xml, { status: 500, headers: { "Content-Type": "text/xml" } });
   }
 
-  const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<Response>\n  <Dial answerOnBridge="true" callerId="${env.TWILIO_FROM_NUMBER ?? ''}">${operatorPhone}</Dial>\n</Response>`;
+  const actionUrl = `${env.PUBLIC_BASE_URL || ''}/api/twilio/call-status`;
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<Response>\n  <Dial answerOnBridge="true" callerId="${env.TWILIO_FROM_NUMBER ?? ''}" action="${actionUrl}" method="POST">${operatorPhone}</Dial>\n</Response>`;
 
   return new NextResponse(xml, { headers: { "Content-Type": "text/xml" } });
 }
@@ -33,7 +34,8 @@ export async function POST(req: NextRequest) {
     const xml = `<?xml version="1.0" encoding="UTF-8"?><Response><Pause length="1"/><Hangup/></Response>`;
     return new NextResponse(xml, { status: 500, headers: { "Content-Type": "text/xml" } });
   }
-  const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<Response>\n  <Dial answerOnBridge="true" callerId="${env.TWILIO_FROM_NUMBER ?? ''}">${operatorPhone}</Dial>\n</Response>`;
+  const actionUrl2 = `${env.PUBLIC_BASE_URL || ''}/api/twilio/call-status`;
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<Response>\n  <Dial answerOnBridge="true" callerId="${env.TWILIO_FROM_NUMBER ?? ''}" action="${actionUrl2}" method="POST">${operatorPhone}</Dial>\n</Response>`;
   return new NextResponse(xml, { headers: { "Content-Type": "text/xml" } });
 }
 
