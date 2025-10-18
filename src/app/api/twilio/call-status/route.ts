@@ -57,6 +57,20 @@ export async function POST(req: NextRequest) {
     if (!incident && parentSid && parentSid !== callSidRaw) {
       incident = await findIncidentByCallSid(parentSid);
     }
+    // As a last resort during activation race, try to attach to the newest initiated incident without callSid
+    if (!incident && (callStatus === 'initiated' || callStatus === 'ringing' || callStatus === 'answered')) {
+      try {
+        const { findRecentInitiatedIncidentWithoutCallSid } = await import('@/lib/db');
+        const since = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+        const maybe = await findRecentInitiatedIncidentWithoutCallSid(since);
+        if (maybe) {
+          // Attach the callSid for future updates
+          const { updateIncident } = await import('@/lib/db');
+          await updateIncident(maybe.id, { callSid: callSidRaw || parentSid });
+          incident = maybe;
+        }
+      } catch {}
+    }
     if (!incident) {
       // Nothing to update yet; log and accept
       logEvent({ event: 'call_status_orphan', route: '/api/twilio/call-status', callSid, callStatus });

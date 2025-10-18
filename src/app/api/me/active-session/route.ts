@@ -46,7 +46,8 @@ export async function GET(req: NextRequest) {
       active: derivedActive,
       status: incident.status,
       sessionSid: incident.sessionSid,
-      callSid: (incident as unknown as { callSid?: string }).callSid || undefined,
+      // Hide callSid once terminal to encourage client UI reset
+      callSid: (terminal || hasResolved) ? undefined : (incident as unknown as { callSid?: string }).callSid || undefined,
       incidentId: incident.id,
       wolfId: incident.wolfId,
       operator,

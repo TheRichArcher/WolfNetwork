@@ -302,6 +302,47 @@ export async function findIncidentByCallSid(callSid: string): Promise<IncidentRe
   }
 }
 
+// Fallback helper: find the most recent initiated incident without a callSid after the given timestamp
+export async function findRecentInitiatedIncidentWithoutCallSid(sinceIso: string): Promise<IncidentRecord | null> {
+  try {
+    const base = getBase();
+    const table = base('incidents');
+    const records = await table
+      .select({
+        filterByFormula: `AND({status} = 'initiated', NOT({callSid}), IS_AFTER({createdAt}, '${sinceIso}'))`,
+        sort: [{ field: 'createdAt', direction: 'desc' }],
+        maxRecords: 1,
+      })
+      .firstPage();
+    if (records.length === 0) return null;
+    const r = records[0];
+    return {
+      id: (r.get('id') as string) || '',
+      wolfId: (r.get('wolfId') as string) || '',
+      sessionSid: (r.get('sessionSid') as string) || '',
+      status: (r.get('status') as IncidentRecord['status']) || 'initiated',
+      type: (r.get('type') as IncidentRecord['type']) || 'unknown',
+      partnerId: (r.get('partnerId') as string) || undefined,
+      operatorId: (r.get('operatorId') as string) || undefined,
+      createdAt: (r.get('createdAt') as string) || new Date().toISOString(),
+      resolvedAt: (r.get('resolvedAt') as string) || undefined,
+      tier: (r.get('tier') as IncidentRecord['tier']) || undefined,
+      region: (r.get('region') as IncidentRecord['region']) || undefined,
+      callSid: undefined,
+      activatedAt: (r.get('activatedAt') as string) || undefined,
+      statusReason: (r.get('statusReason') as string) || undefined,
+      twilioStatus: (r.get('twilioStatus') as string) || undefined,
+      durationSeconds: (r.get('durationSeconds') as number) || undefined,
+      operatorPhone: (r.get('operatorPhone') as string) || undefined,
+    };
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    const statusCode = extractStatusCode(e);
+    logEvent({ event: 'airtable_error', op: 'select', table: 'incidents', statusCode, error: msg });
+    throw e;
+  }
+}
+
 export async function findIncidentById(customIdOrRecId: string): Promise<IncidentRecord | null> {
   try {
     const base = getBase();
