@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyTwilioSignature } from '@/lib/twilioWebhook';
+import { getEnv } from '@/lib/env';
 import { findIncidentByCallSid } from '@/lib/db';
 import { resolveIncident } from '@/lib/incidents';
 import { logEvent } from '@/lib/log';
@@ -29,12 +30,19 @@ export async function POST(req: NextRequest) {
       params = new URLSearchParams();
     }
 
-    // IMPORTANT: Twilio signature must be computed with the exact URL Twilio POSTed to.
-    // Do not override host with PUBLIC_BASE_URL here; use the incoming request URL.
-    const fullUrl = `${url.protocol}//${url.host}${url.pathname}`;
+    // IMPORTANT: Twilio signature must be computed with the exact public URL Twilio POSTed to.
+    // Prefer PUBLIC_BASE_URL when set; else use X-Forwarded headers; else fall back to nextUrl.
+    const env = getEnv();
+    const xfProto = req.headers.get('x-forwarded-proto');
+    const xfHost = req.headers.get('x-forwarded-host');
+    const base = (env.PUBLIC_BASE_URL && /^https?:\/\//i.test(env.PUBLIC_BASE_URL) ? env.PUBLIC_BASE_URL : '')
+      || (xfProto && xfHost ? `${xfProto}://${xfHost}` : '')
+      || `${url.protocol}//${url.host}`;
+    const fullUrl = `${base}${url.pathname}${url.search || ''}`;
     // Enforce signature verification in production; in non-production, allow bypass for local/dev testing
     const sigOk = verifyTwilioSignature({ fullUrl, xSignature: xSig, formParams: params });
     if (process.env.NODE_ENV === 'production' && !sigOk) {
+      logEvent({ event: 'twilio_sig_invalid', route: '/api/twilio/call-status', computedUrl: fullUrl }, 'warn');
       return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
     }
 
