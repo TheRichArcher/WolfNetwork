@@ -51,7 +51,19 @@ export async function POST(req: NextRequest) {
     const from = params.get('From') || '';
     const to = params.get('To') || '';
     const dur = params.get('CallDuration') || '';
-    logEvent({ event: 'call_status_raw', route: '/api/twilio/call-status', callSid, callStatus, from, to, duration: dur });
+    // Detailed logging to help correlate parent/child SIDs and duplicate events
+    logEvent({
+      event: 'call_status_raw',
+      route: '/api/twilio/call-status',
+      callSid,
+      callSidRaw,
+      parentSid,
+      dialCallSid,
+      callStatus,
+      from,
+      to,
+      duration: dur,
+    });
     if (!callSid) return NextResponse.json({ ok: true });
 
     // Try all relevant SIDs: parent call, direct CallSid, and Dial child
@@ -111,6 +123,7 @@ export async function POST(req: NextRequest) {
       const durDial = params.get('DialCallDuration');
       const dur = durPrimary || durDial;
       const durationSeconds = dur && /^\d+$/.test(dur) ? Number(dur) : undefined;
+      logEvent({ event: 'incident_resolving', route: '/api/twilio/call-status', incidentId: incident.id, finalStatus: action.status, twilioStatus: callStatus, durationSeconds });
       await resolveIncident({
         incidentId: incident.id,
         status: action.status,
