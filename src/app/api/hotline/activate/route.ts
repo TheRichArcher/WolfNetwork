@@ -189,6 +189,7 @@ export async function POST(req: NextRequest) {
               const op = await getAvailableOperator(user?.region || 'US');
               if (op) {
                 await updateIncident(incidentId, { operatorId: op.id, operatorPhone: op.phone });
+                logEvent({ event: 'operator_assigned', route: '/api/hotline/activate', incidentId, operatorId: op.id, operatorPhone: op.phone });
               }
             } catch (e: unknown) {
               const msg = e instanceof Error ? e.message : String(e);
@@ -211,6 +212,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Initiate Twilio call with retries for reliability
+    logEvent({ event: 'twilio_call_pre', route: '/api/hotline/activate', incidentId, twimlUrl });
     let call;
     try {
       call = await retry(() => createDirectCall(

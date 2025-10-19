@@ -35,6 +35,7 @@ export async function GET(req: NextRequest) {
   // Build absolute StatusCallback URL for Twilio callbacks; fall back to incoming request host
   const base = env.PUBLIC_BASE_URL || `${req.nextUrl.protocol}//${req.nextUrl.host}`;
   const statusCb = `${base}/api/twilio/call-status`;
+  logEvent({ event: 'twiml_dial_config', route: '/api/hotline/twiml', operatorPhone, base });
   const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<Response>\n  <Dial answerOnBridge="true" callerId="${env.TWILIO_FROM_NUMBER ?? ''}" statusCallback="${statusCb}" statusCallbackEvent="initiated ringing answered in-progress completed busy no-answer failed canceled" statusCallbackMethod="POST">${operatorPhone}</Dial>\n</Response>`;
 
   return new NextResponse(xml, { headers: { "Content-Type": "text/xml" } });
@@ -69,6 +70,7 @@ export async function POST(req: NextRequest) {
 
   const base2 = env.PUBLIC_BASE_URL || `${req.nextUrl.protocol}//${req.nextUrl.host}`;
   const statusCb2 = `${base2}/api/twilio/call-status`;
+  logEvent({ event: 'twiml_dial_config', route: '/api/hotline/twiml', operatorPhone, base: base2 });
   const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<Response>\n  <Dial answerOnBridge="true" callerId="${env.TWILIO_FROM_NUMBER ?? ''}" statusCallback="${statusCb2}" statusCallbackEvent="initiated ringing answered in-progress completed busy no-answer failed canceled" statusCallbackMethod="POST">${operatorPhone}</Dial>\n</Response>`;
   return new NextResponse(xml, { headers: { "Content-Type": "text/xml" } });
 }

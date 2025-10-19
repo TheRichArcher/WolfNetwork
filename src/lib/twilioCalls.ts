@@ -1,4 +1,5 @@
 import { getEnv } from './env';
+import { logEvent } from './log';
 
 export type CreateCallResult = { sid: string; status?: string };
 
@@ -33,6 +34,9 @@ export async function createDirectCall(toE164: string, twimlUrl: string, opts?: 
     // Ask Twilio to notify for all key lifecycle events we use in UI/state
     body.set('StatusCallbackEvent', 'initiated ringing answered in-progress completed busy no-answer failed canceled');
   }
+  try {
+    logEvent({ event: 'twilio_create_call', toE164, twimlUrl, callbackUrl, idempotencyKey: opts?.idempotencyKey || undefined });
+  } catch {}
   const headers: Record<string, string> = { Authorization: `Basic ${authHeader}`, 'Content-Type': 'application/x-www-form-urlencoded' };
   if (opts?.idempotencyKey) {
     headers['Idempotency-Key'] = opts.idempotencyKey;

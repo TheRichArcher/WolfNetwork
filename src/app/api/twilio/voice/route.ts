@@ -3,6 +3,7 @@ import { getEnv } from '@/lib/env';
 import { getOperatorNumber } from '@/lib/operator';
 import { getRedis } from '@/lib/redis';
 import { logEvent } from '@/lib/log';
+const memoryLocks = new Set<string>();
 
 export async function GET(req: NextRequest) {
   const env = getEnv();
@@ -23,15 +24,24 @@ export async function GET(req: NextRequest) {
         const set = await redis.set(`twiml:dial:${callSid}`, '1', 'EX', 180, 'NX');
         if (set !== 'OK') {
           logEvent({ event: 'twiml_dial_skipped_duplicate', route: '/api/twilio/voice', callSid });
-          const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<Response>\n  <Pause length="1"/>\n  <Hangup/>\n</Response>`;
+          const xml = `<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Response>\n  <Pause length=\"1\"/>\n  <Hangup/>\n</Response>`;
           return new NextResponse(xml, { headers: { 'Content-Type': 'text/xml' } });
         }
+      } else {
+        if (memoryLocks.has(callSid)) {
+          logEvent({ event: 'twiml_dial_skipped_duplicate_mem', route: '/api/twilio/voice', callSid });
+          const xml = `<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Response>\n  <Pause length=\"1\"/>\n  <Hangup/>\n</Response>`;
+          return new NextResponse(xml, { headers: { 'Content-Type': 'text/xml' } });
+        }
+        memoryLocks.add(callSid);
+        setTimeout(() => memoryLocks.delete(callSid), 180000).unref?.();
       }
     }
   } catch {}
 
   // Bridge the caller with the operator; always provide absolute callback URLs
   const base = env.PUBLIC_BASE_URL || `${req.nextUrl.protocol}//${req.nextUrl.host}`;
+  logEvent({ event: 'twiml_dial_config', route: '/api/twilio/voice', operator, base });
   const statusCb = ` statusCallback=\"${base}/api/twilio/call-status\" statusCallbackEvent=\"initiated ringing answered in-progress completed busy no-answer failed canceled\" statusCallbackMethod=\"POST\"`;
   const xml = `<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Response>\n  <Dial answerOnBridge=\"true\" callerId=\"${env.TWILIO_FROM_NUMBER ?? ''}\"${statusCb}>${operator}</Dial>\n</Response>`;
   return new NextResponse(xml, { headers: { 'Content-Type': 'text/xml' } });
@@ -58,11 +68,20 @@ export async function POST(req: NextRequest) {
           const xml = `<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Response>\n  <Pause length=\"1\"/>\n  <Hangup/>\n</Response>`;
           return new NextResponse(xml, { headers: { 'Content-Type': 'text/xml' } });
         }
+      } else {
+        if (memoryLocks.has(callSid)) {
+          logEvent({ event: 'twiml_dial_skipped_duplicate_mem', route: '/api/twilio/voice', callSid });
+          const xml = `<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Response>\n  <Pause length=\"1\"/>\n  <Hangup/>\n</Response>`;
+          return new NextResponse(xml, { headers: { 'Content-Type': 'text/xml' } });
+        }
+        memoryLocks.add(callSid);
+        setTimeout(() => memoryLocks.delete(callSid), 180000).unref?.();
       }
     }
   } catch {}
 
   const base2 = env.PUBLIC_BASE_URL || `${req.nextUrl.protocol}//${req.nextUrl.host}`;
+  logEvent({ event: 'twiml_dial_config', route: '/api/twilio/voice', operator, base: base2 });
   const statusCb2 = ` statusCallback=\"${base2}/api/twilio/call-status\" statusCallbackEvent=\"initiated ringing answered in-progress completed busy no-answer failed canceled\" statusCallbackMethod=\"POST\"`;
   const xml = `<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Response>\n  <Dial answerOnBridge=\"true\" callerId=\"${env.TWILIO_FROM_NUMBER ?? ''}\"${statusCb2}>${operator}</Dial>\n</Response>`;
   return new NextResponse(xml, { headers: { 'Content-Type': 'text/xml' } });
