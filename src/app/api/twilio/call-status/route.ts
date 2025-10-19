@@ -35,8 +35,9 @@ export async function POST(req: NextRequest) {
     const env = getEnv();
     const xfProto = req.headers.get('x-forwarded-proto');
     const xfHost = req.headers.get('x-forwarded-host');
-    const base = (env.PUBLIC_BASE_URL && /^https?:\/\//i.test(env.PUBLIC_BASE_URL) ? env.PUBLIC_BASE_URL : '')
-      || (xfProto && xfHost ? `${xfProto}://${xfHost}` : '')
+    // Prefer X-Forwarded headers (actual public host Twilio hit), then PUBLIC_BASE_URL, then local nextUrl
+    const base = (xfProto && xfHost ? `${xfProto}://${xfHost}` : '')
+      || (env.PUBLIC_BASE_URL && /^https?:\/\//i.test(env.PUBLIC_BASE_URL) ? env.PUBLIC_BASE_URL : '')
       || `${url.protocol}//${url.host}`;
     const fullUrl = `${base}${url.pathname}${url.search || ''}`;
     // Enforce signature verification in production; in non-production, allow bypass for local/dev testing
