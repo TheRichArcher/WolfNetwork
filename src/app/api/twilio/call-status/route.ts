@@ -17,6 +17,10 @@ function mapToAction(status: string): { kind: 'activate' } | { kind: 'resolve'; 
 export async function POST(req: NextRequest) {
   try {
     const url = req.nextUrl;
+    // Early log to verify webhook hits before signature verification
+    try {
+      logEvent({ event: 'call_status_webhook_hit', route: '/api/twilio/call-status', path: url.pathname });
+    } catch {}
     const xSig = req.headers.get('x-twilio-signature');
     const contentType = req.headers.get('content-type') || '';
     let params: URLSearchParams | null = null;
