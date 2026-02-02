@@ -10,7 +10,7 @@ const BottomNav = () => {
       <RelayStatus />
       <nav aria-label="Primary" className="flex justify-around items-center h-14 px-4 border-t border-border">
         <Link href="/" className="text-accent hover:text-main-text focus:outline-none focus:ring-2 focus:ring-cta rounded">Home</Link>
-        <Link href="/hotline" className="text-accent hover:text-main-text focus:outline-none focus:ring-2 focus:ring-cta rounded">Hotline</Link>
+        <Link href="/hotline-v2" className="text-accent hover:text-main-text focus:outline-none focus:ring-2 focus:ring-cta rounded">Hotline</Link>
         <Link href="/profile" className="text-accent hover:text-main-text focus:outline-none focus:ring-2 focus:ring-cta rounded">Profile</Link>
         <Link href="/partners" className="text-accent hover:text-main-text focus:outline-none focus:ring-2 focus:ring-cta rounded">Partners</Link>
       </nav>
