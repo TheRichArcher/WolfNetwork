@@ -79,7 +79,9 @@ export default withAuth(async function middleware(req: NextRequest) {
 
   if (geofenceEnabled) {
     const cityHeader = req.headers.get("x-vercel-ip-city") || "";
-    const city = (req as any).geo?.city || cityHeader;
+    // Vercel Edge adds geo property at runtime; access via type assertion
+    const geo = (req as NextRequest & { geo?: { city?: string } }).geo;
+    const city = geo?.city || cityHeader;
     if (city && city !== laCity) {
       const blockedUrl = new URL("/blocked", nextUrl);
       blockedUrl.searchParams.set("reason", "geo");
