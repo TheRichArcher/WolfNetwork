@@ -17,6 +17,7 @@ export async function GET(req: Request) {
       id: incident.id,
       wolfId: incident.wolfId,
       status: incident.status,
+      type: incident.type, // crisis type (legal/medical/security/pr)
       twilioStatus: incident.twilioStatus,
       createdAt: incident.createdAt,
       resolvedAt: incident.resolvedAt || null,

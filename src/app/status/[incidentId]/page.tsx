@@ -7,10 +7,19 @@ type Incident = {
   id: string;
   wolfId?: string;
   status?: string;
+  type?: string;
   twilioStatus?: string;
   createdAt?: string;
   resolvedAt?: string | null;
   durationSeconds?: number;
+};
+
+const CRISIS_LABELS: Record<string, string> = {
+  legal: '⚖️ Legal',
+  medical: '🏥 Medical',
+  security: '🛡️ Security',
+  pr: '📢 PR',
+  unknown: 'Unknown',
 };
 
 export default function IncidentStatusPage(props: unknown) {
@@ -32,6 +41,7 @@ export default function IncidentStatusPage(props: unknown) {
             id: j.id,
             wolfId: j.wolfId,
             status: j.status,
+            type: j.type,
             twilioStatus: j.twilioStatus,
             createdAt: j.createdAt,
             resolvedAt: j.resolvedAt,
@@ -71,6 +81,12 @@ export default function IncidentStatusPage(props: unknown) {
                 <span className="text-accent">Incident Status:</span>
                 <span className="ml-2">{incident?.status || '—'}</span>
               </div>
+              {incident?.type && (
+                <div>
+                  <span className="text-accent">Crisis Type:</span>
+                  <span className="ml-2">{CRISIS_LABELS[incident.type] || incident.type}</span>
+                </div>
+              )}
               <div>
                 <span className="text-accent">Twilio Status:</span>
                 <span className="ml-2">{incident?.twilioStatus || '—'}</span>
