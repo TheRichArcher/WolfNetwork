@@ -1,10 +1,10 @@
-### The Wolf Network — New PM Onboarding
+### The Wolf Network - New PM Onboarding
 
 This document equips a new PM to lead the Wolf Network app from day one: architecture, environments, integrations, operational runbooks, testing, and immediate priorities.
 
 ## Product overview
-- **Purpose**: A members-only crisis relief hotline that connects a member to an operator and coordinates a vetted partner “pack” across Legal, Medical, PR, and Security.
-- **MVP scope**: Invite-only auth, a long-press “Hotline” activation, Twilio voice bridging to an operator, lightweight incident tracking (Airtable), notifications (Discord), status pages, and a simple billing checkout.
+- **Purpose**: A members-only crisis relief hotline that connects a member to an operator and coordinates a vetted partner "pack" across Legal, Medical, PR, and Security.
+- **MVP scope**: Invite-only auth, a long-press "Hotline" activation, Twilio voice bridging to an operator, lightweight incident tracking (Airtable), notifications (Discord), status pages, and a simple billing checkout.
 
 ## Architecture at a glance
 - **Frontend/Backend**: Next.js App Router (React 19), TypeScript, TailwindCSS 4.
@@ -19,16 +19,16 @@ This document equips a new PM to lead the Wolf Network app from day one: archite
 - **PWA**: Config present; currently not emphasized in MVP.
 
 ## Codebase layout
-- `src/app` — App Router pages and API routes
-  - `api/auth/[...nextauth]` — NextAuth with Auth0 provider
-  - `api/signup/*` — Invite and comped-code verification
-  - `api/hotline/*` — Activate, TwiML, end-session
-  - `api/twilio/*` — Voice/TwiML and status webhooks
-  - `api/me/*` — Member identity, active session, security status, team
-  - `api/incident/[incidentId]` — Incident status for public share/status pages
-  - `api/billing/*` — Stripe checkout + verify (MVP cookie)
-- `src/lib` — Env, crypto, rate limiting, Airtable access, twilio helpers, webhook verification, notifications
-- `src/components` — UI components (e.g., `HotlineButton`)
+- `src/app` - App Router pages and API routes
+  - `api/auth/[...nextauth]` - NextAuth with Auth0 provider
+  - `api/signup/*` - Invite and comped-code verification
+  - `api/hotline/*` - Activate, TwiML, end-session
+  - `api/twilio/*` - Voice/TwiML and status webhooks
+  - `api/me/*` - Member identity, active session, security status, team
+  - `api/incident/[incidentId]` - Incident status for public share/status pages
+  - `api/billing/*` - Stripe checkout + verify (MVP cookie)
+- `src/lib` - Env, crypto, rate limiting, Airtable access, twilio helpers, webhook verification, notifications
+- `src/components` - UI components (e.g., `HotlineButton`)
 
 ## Environments and configuration
 Prereqs: Node 20.x, npm.
@@ -52,10 +52,10 @@ Minimum env for local happy-path (place in `.env.local`):
 - Base URL: `PUBLIC_BASE_URL` (helps Twilio callbacks/building absolute URLs in dev)
 
 Helpful dev flags:
-- `AUTH_DEV_BYPASS=true` — bypasses auth for select pages/APIs (see `middleware.ts`).
-- `DEV_CALLER_E164=+15555550123` — fallback caller number when a user phone isn’t configured.
-- `BIOMETRIC_BYPASS_EMAILS=email@example.com,...` — allows biometric cookie bypass for listed addresses.
-- `INVITED_EMAILS=email1@example.com,email2@example.com` — invite allow-list in production.
+- `AUTH_DEV_BYPASS=true` - bypasses auth for select pages/APIs (see `middleware.ts`).
+- `DEV_CALLER_E164=+15555550123` - fallback caller number when a user phone isn't configured.
+- `BIOMETRIC_BYPASS_EMAILS=email@example.com,...` - allows biometric cookie bypass for listed addresses.
+- `INVITED_EMAILS=email1@example.com,email2@example.com` - invite allow-list in production.
 
 Optional/feature envs (set as needed):
 - Stripe: `STRIPE_SECRET_KEY`, `STRIPE_PRICE_SILVER_ID`, `STRIPE_PRICE_GOLD_ID`, `STRIPE_PRICE_PLATINUM_ID`
@@ -82,7 +82,7 @@ Production guards
 
 ### 3) Hotline activation (end-to-end)
 1. UI long-press triggers `POST /api/hotline/activate`.
-2. Server resolves the member’s callable number:
+2. Server resolves the member's callable number:
    - Decrypts `users.phoneEncrypted` when present; else checks assigned Twilio/alias fields; else dev fallbacks.
 3. Creates an `incidents` record (Airtable) with `status=initiated` and optional operator assignment.
 4. Initiates Twilio call via REST to member, TwiML at `/api/twilio/voice` or `/api/hotline/twiml` bridges to operator.
@@ -97,10 +97,10 @@ Manual end: `POST /api/hotline/end-session` ends a call (best-effort) and resolv
 - Partner presence: `GET /api/partners/presence` returns a deterministic, time-varying mock by region.
 
 ## Data model (Airtable)
-- `users` — `id`, `email`, `wolfId`, `phoneEncrypted`, `status` (`pending|approved|active`), `tier`, `region`, optional assigned numbers.
-- `incidents` — `id` (UUID or Airtable `rec...`), `wolfId`, `sessionSid`, `status`, `type`, `partnerId`, `operatorId`, `createdAt`, `resolvedAt`, `tier`, `region`, `callSid`, `activatedAt`, `statusReason`, `twilioStatus`, `durationSeconds`, `operatorPhone`.
-- `codes` — `code`, `wolfId?`, `tier?`, `disabled?`.
-- `operators` — `id`, `phone`, `region`, `status` (`available`).
+- `users` - `id`, `email`, `wolfId`, `phoneEncrypted`, `status` (`pending|approved|active`), `tier`, `region`, optional assigned numbers.
+- `incidents` - `id` (UUID or Airtable `rec...`), `wolfId`, `sessionSid`, `status`, `type`, `partnerId`, `operatorId`, `createdAt`, `resolvedAt`, `tier`, `region`, `callSid`, `activatedAt`, `statusReason`, `twilioStatus`, `durationSeconds`, `operatorPhone`.
+- `codes` - `code`, `wolfId?`, `tier?`, `disabled?`.
+- `operators` - `id`, `phone`, `region`, `status` (`available`).
 
 Note: The server tolerates common case variations in Airtable field/table names where practical.
 
@@ -113,11 +113,11 @@ Note: The server tolerates common case variations in Airtable field/table names 
 ## Operational runbooks
 ### Hotline incident lifecycle
 - If calls fail to initiate: check Twilio env, `PUBLIC_BASE_URL`, and Twilio Console logs; see `createDirectCall`.
-- If incidents don’t update: verify Twilio webhooks point to `/api/twilio/call-status` and signature settings, confirm Airtable availability.
+- If incidents don't update: verify Twilio webhooks point to `/api/twilio/call-status` and signature settings, confirm Airtable availability.
 - If status hangs at `initiated`: `GET /api/me/active-session` prunes stale incidents >30m; else resolve manually via `end-session`.
 
 ### Twilio outages or misconfig
-- Fail closed: members see “idle” or error. Flip to dev fallback for internal testing: set `AUTH_DEV_BYPASS=true` and `DEV_CALLER_E164`.
+- Fail closed: members see "idle" or error. Flip to dev fallback for internal testing: set `AUTH_DEV_BYPASS=true` and `DEV_CALLER_E164`.
 - Temporarily disable hotline button in UI (feature flag) if needed.
 
 ### Airtable unavailable
@@ -195,6 +195,39 @@ Release checklist
 - Run a full hotline lifecycle test (activate → connect → resolve → Discord).
 - Review Airtable base for table names/fields; align with the above data model.
 - Align security posture: disable dev bypasses, verify signature checks, rotate `ENCRYPTION_KEY` per environment.
-- Prioritize the “Known gaps” list and convert into roadmap epics with owners and timelines.
+- Prioritize the "Known gaps" list and convert into roadmap epics with owners and timelines.
 
+---
 
+## V2 Updates (2026-02-01)
+
+### Simplified UX (`/hotline-v2`)
+The new V2 hotline page reduces activation from 6 steps to 3:
+1. Tap crisis type (Legal/Medical/Security/PR)
+2. Hold button (1.5s with visual progress)
+3. Connected to specialist
+
+Key files:
+- `src/components/CrisisSelector.tsx` — Category selection + hold-to-activate
+- `src/app/hotline-v2/page.tsx` — Simplified page with live status
+
+### Crisis Type Routing
+The API now accepts and routes by crisis type:
+
+```typescript
+POST /api/hotline/activate
+{ "crisisType": "legal" | "medical" | "security" | "pr" }
+```
+
+- Stored on incident record as `type`
+- Operator lookup filters by `specialty` field when available
+- Discord notifications display crisis type with emoji
+
+### Airtable Schema Updates
+Operators table can now include:
+- `specialty`: "legal" | "medical" | "security" | "pr"
+
+Operators with matching specialty are prioritized; fallback to any available.
+
+### Navigation
+Bottom nav now routes to `/hotline-v2` by default. Home page retains legacy quick-activate for emergencies.
