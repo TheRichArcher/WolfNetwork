@@ -33,10 +33,10 @@ export type IncidentRecord = {
   operatorPhone?: string;
 };
 
-const USERS_TABLE = process.env.USERS_TABLE_NAME || 'users';
+const USERS_TABLE = process.env.USERS_TABLE_NAME || 'Users';
 const USERS_TABLE_ALT = USERS_TABLE === 'users' ? 'Users' : USERS_TABLE === 'Users' ? 'users' : undefined;
 const INCIDENTS_TABLE = process.env.INCIDENTS_TABLE_NAME || 'incidents';
-const CODES_TABLE = process.env.CODES_TABLE_NAME || 'codes';
+const CODES_TABLE = process.env.CODES_TABLE_NAME || 'Codes';
 
 function getBase() {
   const env = getEnv();
@@ -155,7 +155,7 @@ export async function upsertUserBasic(params: {
 
 // Validate a comped code against an Airtable table ('codes' by default) and return metadata
 export async function validateCompedCode(code: string): Promise<{ valid: boolean; wolfId?: string; tier?: UserRecord['tier'] }>{
-  const TABLE = process.env.CODES_TABLE_NAME || 'codes';
+  const TABLE = process.env.CODES_TABLE_NAME || 'Codes';
   try {
     const base = getBase();
     const table = base(TABLE);
@@ -173,7 +173,7 @@ export async function validateCompedCode(code: string): Promise<{ valid: boolean
     return { valid: true, wolfId, tier };
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
-    logEvent({ event: 'airtable_error', op: 'validate_comped_code', table: process.env.CODES_TABLE_NAME || 'codes', error: msg });
+    logEvent({ event: 'airtable_error', op: 'validate_comped_code', table: process.env.CODES_TABLE_NAME || 'Codes', error: msg });
     throw e;
   }
 }
