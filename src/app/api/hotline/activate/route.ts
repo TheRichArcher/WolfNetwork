@@ -184,17 +184,17 @@ export async function POST(req: NextRequest) {
           const base = getEnv().PUBLIC_BASE_URL || `${req.nextUrl.protocol}//${req.nextUrl.host}`;
           const presence = await getPresenceForRegion(user?.region || 'LA');
           notifyDiscordOnIncident({
-            incident: { id: incidentId, wolfId: user?.wolfId || 'WOLF-DEV-TEST', tier: user?.tier, region: user?.region },
+            incident: { id: incidentId, wolfId: user?.wolfId || 'WOLF-DEV-TEST', tier: user?.tier, region: user?.region, crisisType },
             presence,
             baseUrl: base,
           }).catch(() => {});
           const hasPresence = Array.isArray(presence) && presence.some((p) => p.status === 'Active');
           if (hasPresence) {
             try {
-              const op = await getAvailableOperator(user?.region || 'US');
+              const op = await getAvailableOperator(user?.region || 'US', crisisType);
               if (op) {
                 await updateIncident(incidentId, { operatorId: op.id, operatorPhone: op.phone });
-                logEvent({ event: 'operator_assigned', route: '/api/hotline/activate', incidentId, operatorId: op.id, operatorPhone: op.phone });
+                logEvent({ event: 'operator_assigned', route: '/api/hotline/activate', incidentId, operatorId: op.id, operatorPhone: op.phone, specialty: op.specialty, requestedType: crisisType });
               }
             } catch (e: unknown) {
               const msg = e instanceof Error ? e.message : String(e);

@@ -9,6 +9,7 @@ export type IncidentSummary = {
   tier?: string;
   region?: string;
   callSid?: string;
+  crisisType?: 'legal' | 'medical' | 'security' | 'pr' | 'unknown';
 };
 
 const DEFAULT_WEBHOOK = 'https://discord.com/api/webhooks/1427704694200864800/A7bgIk2w2JQdhFYdLkMEU45xrH4AYLKjwk6DeEHEI7YGaR29VuMQWQew1Sfmh7G-sVDg';
@@ -29,9 +30,21 @@ function resolveBaseUrl(explicit?: string): string | undefined {
   return first;
 }
 
+const CRISIS_EMOJI: Record<string, string> = {
+  legal: '⚖️',
+  medical: '🏥',
+  security: '🛡️',
+  pr: '📢',
+  unknown: '❓',
+};
+
 function buildCreationEmbed(incident: IncidentSummary, presence?: Presence, viewUrl?: string) {
   const fields: Array<{ name: string; value: string; inline?: boolean }> = [];
   fields.push({ name: 'Wolf ID', value: incident.wolfId, inline: true });
+  if (incident.crisisType && incident.crisisType !== 'unknown') {
+    const emoji = CRISIS_EMOJI[incident.crisisType] || '';
+    fields.push({ name: 'Crisis Type', value: `${emoji} ${incident.crisisType.charAt(0).toUpperCase() + incident.crisisType.slice(1)}`, inline: true });
+  }
   if (incident.region) fields.push({ name: 'Region', value: incident.region, inline: true });
   if (incident.tier) fields.push({ name: 'Tier', value: incident.tier, inline: true });
   if (incident.callSid) fields.push({ name: 'Call SID', value: incident.callSid, inline: false });

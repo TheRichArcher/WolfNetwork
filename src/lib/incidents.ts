@@ -10,9 +10,35 @@ import { findUserBySessionEmail, findIncidentById, updateIncident, type Incident
 import { notifyDiscordOnIncidentResolved } from './notify';
 // Use local getBase declared below to avoid circular import/export
 
-export async function getAvailableOperator(region: string): Promise<{ id: string; phone: string } | null> {
+export async function getAvailableOperator(
+  region: string,
+  crisisType?: 'legal' | 'medical' | 'security' | 'pr' | 'unknown'
+): Promise<{ id: string; phone: string; specialty?: string } | null> {
   const base = getBase();
-  const table = base('operators'); // Assume 'operators' table exists with id, phone, region, status
+  const table = base('operators'); // Assume 'operators' table exists with id, phone, region, status, specialty
+  
+  // Try to find operator matching both region and specialty first
+  if (crisisType && crisisType !== 'unknown') {
+    const specialtyFilter = `AND({region} = '${region}', {status} = 'available', {specialty} = '${crisisType}')`;
+    try {
+      const specialized = await table.select({
+        filterByFormula: specialtyFilter,
+        maxRecords: 1,
+      }).firstPage();
+      if (specialized.length > 0) {
+        const r = specialized[0];
+        return {
+          id: r.get('id') as string,
+          phone: r.get('phone') as string,
+          specialty: r.get('specialty') as string | undefined,
+        };
+      }
+    } catch {
+      // specialty field may not exist, fall through to general lookup
+    }
+  }
+  
+  // Fall back to any available operator in region
   const records = await table.select({
     filterByFormula: `AND({region} = '${region}', {status} = 'available')`,
     maxRecords: 1,
@@ -22,6 +48,7 @@ export async function getAvailableOperator(region: string): Promise<{ id: string
   return {
     id: r.get('id') as string,
     phone: r.get('phone') as string,
+    specialty: r.get('specialty') as string | undefined,
   };
 }
 
