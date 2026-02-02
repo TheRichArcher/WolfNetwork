@@ -10,6 +10,8 @@ export default function ProfilePage() {
   const [billing, setBilling] = useState<{ amount?: string; due?: string } | null>(null);
   const [checking, setChecking] = useState(false);
   const [phone, setPhone] = useState('');
+  const [phoneSaving, setPhoneSaving] = useState(false);
+  const [phoneSaved, setPhoneSaved] = useState(false);
 
   useEffect(() => {
     const isClient = typeof window !== 'undefined';
@@ -17,8 +19,7 @@ export default function ProfilePage() {
     const amount = localStorage.getItem('retainerAmount') || undefined;
     const due = localStorage.getItem('retainerDue') || undefined;
     if (amount || due) setBilling({ amount, due });
-    const storedPhone = localStorage.getItem('userPhoneE164') || '';
-    if (storedPhone) setPhone(storedPhone);
+    // Phone number is stored server-side encrypted; not exposed to client
   }, []);
 
   useEffect(() => {
@@ -87,19 +88,38 @@ export default function ProfilePage() {
             />
             <button
               className="px-4 py-2 rounded bg-cta text-background font-semibold disabled:opacity-50"
-              onClick={() => {
+              disabled={phoneSaving}
+              onClick={async () => {
                 const trimmed = phone.trim();
                 const e164 = /^\+[1-9]\d{6,14}$/; // basic E.164 check
                 if (!e164.test(trimmed)) {
                   alert('Enter a valid E.164 number, e.g. +13105551234');
                   return;
                 }
-                localStorage.setItem('userPhoneE164', trimmed);
-                alert('Phone saved. We\'ll use this for emergency calls.');
+                setPhoneSaving(true);
+                try {
+                  const resp = await fetch('/api/me/phone', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phoneE164: trimmed }),
+                  });
+                  if (resp.ok) {
+                    setPhoneSaved(true);
+                    setTimeout(() => setPhoneSaved(false), 3000);
+                  } else {
+                    const data = await resp.json().catch(() => ({}));
+                    alert(data.error || 'Failed to save phone');
+                  }
+                } catch {
+                  alert('Network error saving phone');
+                } finally {
+                  setPhoneSaving(false);
+                }
               }}
             >
-              Save Number
+              {phoneSaving ? 'Saving...' : 'Save Number'}
             </button>
+            {phoneSaved && <span className="text-green-400 text-sm">✓ Saved securely</span>}
           </div>
         </section>
 
