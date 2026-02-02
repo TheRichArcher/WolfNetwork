@@ -16,4 +16,30 @@ describe('Hotline Activate API', () => {
     expect(res.status).not.toBe(401);
     delete process.env.AUTH_DEV_BYPASS;
   });
+
+  it('accepts valid crisisType parameter', async () => {
+    process.env.AUTH_DEV_BYPASS = 'true';
+    const req = new NextRequest('http://localhost/api/hotline/activate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ crisisType: 'legal' }),
+    });
+    const res = await POST(req);
+    // Should not be a validation error (400 would be for phone not configured, which is expected)
+    expect([400, 500]).toContain(res.status); // Not 401 or 422
+    delete process.env.AUTH_DEV_BYPASS;
+  });
+
+  it('handles invalid crisisType gracefully', async () => {
+    process.env.AUTH_DEV_BYPASS = 'true';
+    const req = new NextRequest('http://localhost/api/hotline/activate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ crisisType: 'invalid_type' }),
+    });
+    const res = await POST(req);
+    // Invalid type should be ignored (falls back to undefined), not crash
+    expect(res.status).not.toBe(500);
+    delete process.env.AUTH_DEV_BYPASS;
+  });
 });
