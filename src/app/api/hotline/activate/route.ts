@@ -14,13 +14,16 @@ import Airtable from 'airtable';
 
 export async function POST(req: NextRequest) {
   try {
-    // Validate request body
-    const bodySchema = z.object({});
-    let body: unknown = {};
+    // Validate request body - accept optional crisisType for routing
+    const bodySchema = z.object({
+      crisisType: z.enum(['legal', 'medical', 'security', 'pr']).optional(),
+    });
+    let body: { crisisType?: 'legal' | 'medical' | 'security' | 'pr' } = {};
     try {
       body = await req.json();
     } catch {}
-    await bodySchema.parseAsync(body);
+    const parsed = bodySchema.safeParse(body);
+    const crisisType = parsed.success ? parsed.data.crisisType : undefined;
 
     // Authenticate user via session token
     const token = await getToken({ req });
@@ -125,13 +128,14 @@ export async function POST(req: NextRequest) {
             wolfId: user?.wolfId || 'WOLF-DEV-TEST',
             sessionSid: '',
             status: 'initiated',
+            type: crisisType || 'unknown',
             createdAt: new Date().toISOString(),
             tier: user?.tier || 'Gold',
             region: user?.region || 'LA',
           });
           incidentId = incident.id;
-          logEvent({ event: 'hotline_activated_no_user_phone', route: '/api/hotline/activate', incidentId, email, wolfId: user?.wolfId, tier: user?.tier, region: user?.region, baseUrl });
-          return NextResponse.json({ incidentId, callSid: null, note: 'Activated without user phone (no call placed)' });
+          logEvent({ event: 'hotline_activated_no_user_phone', route: '/api/hotline/activate', incidentId, email, wolfId: user?.wolfId, tier: user?.tier, region: user?.region, crisisType, baseUrl });
+          return NextResponse.json({ incidentId, callSid: null, crisisType, note: 'Activated without user phone (no call placed)' });
         } catch (e: unknown) {
           const msg = e instanceof Error ? e.message : String(e);
           logEvent({ event: 'hotline_activate_no_phone_incident_failed', route: '/api/hotline/activate', error: msg }, 'error');
@@ -167,12 +171,13 @@ export async function POST(req: NextRequest) {
         wolfId: user?.wolfId || 'WOLF-DEV-TEST',
         sessionSid: '',
         status: 'initiated',
+        type: crisisType || 'unknown',
         createdAt: new Date().toISOString(),
         tier: user?.tier || 'Gold',
         region: user?.region || 'LA',
       });
       incidentId = incident.id;
-      logEvent({ event: 'incident_create_success', route: '/api/hotline/activate', incidentId, wolfId: user?.wolfId || 'WOLF-DEV-TEST' });
+      logEvent({ event: 'incident_create_success', route: '/api/hotline/activate', incidentId, wolfId: user?.wolfId || 'WOLF-DEV-TEST', crisisType });
       // Post-create side effects (best-effort only). Never block activation on failures here.
       (async () => {
         try {
@@ -234,8 +239,8 @@ export async function POST(req: NextRequest) {
     if (persisted) {
       await updateIncident(incidentId, { callSid: call.sid });
     }
-    logEvent({ event: 'hotline_activated', route: '/api/hotline/activate', incidentId, wolfId: user?.wolfId || 'WOLF-DEV-TEST', callSid: call.sid, authBypass, persisted });
-    return NextResponse.json({ incidentId, callSid: call.sid });
+    logEvent({ event: 'hotline_activated', route: '/api/hotline/activate', incidentId, wolfId: user?.wolfId || 'WOLF-DEV-TEST', callSid: call.sid, crisisType, authBypass, persisted });
+    return NextResponse.json({ incidentId, callSid: call.sid, crisisType });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'Unknown error';
     logEvent({ event: 'hotline_activate_exception', route: '/api/hotline/activate', error: msg }, 'error');

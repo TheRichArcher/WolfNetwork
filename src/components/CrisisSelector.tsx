@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 
 export type CrisisType = 'legal' | 'medical' | 'security' | 'pr';
 
@@ -27,6 +27,15 @@ export default function CrisisSelector({ onActivate, isActivating, isConnected, 
   
   const pressTimerRef = useRef<number | null>(null);
   const isPressingRef = useRef(false);
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (pressTimerRef.current) {
+        clearTimeout(pressTimerRef.current);
+      }
+    };
+  }, []);
 
   const startPress = () => {
     if (!selected || isActivating || isConnected || disabled) return;
@@ -120,12 +129,11 @@ export default function CrisisSelector({ onActivate, isActivating, isConnected, 
           onPointerDown={startPress}
           onPointerUp={endPress}
           onPointerLeave={endPress}
-          onTouchStart={startPress}
-          onTouchEnd={endPress}
+          onPointerCancel={endPress}
           disabled={!selected || disabled}
           className={`
             w-32 h-32 rounded-full font-bold text-lg shadow-xl 
-            flex items-center justify-center transition-all select-none
+            flex items-center justify-center transition-all select-none touch-none
             ${!selected 
               ? 'bg-gray-700 text-gray-400 cursor-not-allowed' 
               : isPressing
@@ -161,7 +169,7 @@ export default function CrisisSelector({ onActivate, isActivating, isConnected, 
             </svg>
           )}
           
-          <span className="relative z-10 text-center leading-tight">
+          <span className="relative z-10 text-center leading-tight whitespace-pre-wrap">
             {!selected ? 'Select\nCrisis Type' : isPressing ? 'Hold...' : 'HOLD'}
           </span>
         </button>

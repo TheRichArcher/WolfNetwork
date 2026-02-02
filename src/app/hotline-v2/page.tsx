@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import Layout from '@/components/Layout';
 import CrisisSelector, { type CrisisType } from '@/components/CrisisSelector';
@@ -14,7 +14,6 @@ export default function HotlineV2Page() {
   const [incidentId, setIncidentId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [crisisType, setCrisisType] = useState<CrisisType | null>(null);
-  const endBannerTimerRef = useRef<number | null>(null);
 
   // Load wolf ID
   useEffect(() => {
