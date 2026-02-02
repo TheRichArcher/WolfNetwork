@@ -55,6 +55,7 @@ export async function GET(req: NextRequest) {
       twilioStatus,
       durationSeconds: (incident as unknown as { durationSeconds?: number }).durationSeconds || undefined,
       isTerminal: terminal || hasResolved,
+      crisisType: incident.type || undefined,
     });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);

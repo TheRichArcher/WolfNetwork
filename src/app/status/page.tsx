@@ -9,6 +9,15 @@ type ActiveSession = {
   wolfId?: string;
   twilioStatus?: string;
   durationSeconds?: number;
+  crisisType?: 'legal' | 'medical' | 'security' | 'pr' | 'unknown';
+};
+
+const CRISIS_LABELS: Record<string, string> = {
+  legal: '⚖️ Legal',
+  medical: '🏥 Medical',
+  security: '🛡️ Security',
+  pr: '📢 PR',
+  unknown: 'Unknown',
 };
 
 export default function StatusPage() {
@@ -53,6 +62,12 @@ export default function StatusPage() {
                 <span className="text-accent">Incident Status:</span>
                 <span className="ml-2">{session.status || (session.active ? 'active' : 'inactive')}</span>
               </div>
+              {session.crisisType && (
+                <div>
+                  <span className="text-accent">Crisis Type:</span>
+                  <span className="ml-2">{CRISIS_LABELS[session.crisisType] || session.crisisType}</span>
+                </div>
+              )}
               <div>
                 <span className="text-accent">Twilio Status:</span>
                 <span className="ml-2">{session.twilioStatus || '—'}</span>
