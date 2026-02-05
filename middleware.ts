@@ -5,41 +5,30 @@ import { getToken } from "next-auth/jwt";
 const geofenceEnabled = process.env.LA_GEOFENCE_ENABLED === "true";
 const laCity = process.env.LA_GEOFENCE_CITY || "Los Angeles";
 
+// Public routes that don't require authentication
+const publicRoutes = [
+  "/",
+  "/signup",
+  "/blocked",
+  "/biometric",
+];
+
+const isPublicRoute = (pathname: string) =>
+  publicRoutes.includes(pathname) ||
+  pathname.startsWith("/api/auth") ||
+  pathname.startsWith("/api/hotline/") ||
+  pathname === "/api/activate-hotline" ||
+  pathname.startsWith("/api/signup/") ||
+  pathname.startsWith("/api/twilio/") ||
+  pathname.startsWith("/_next");
+
 export default withAuth(async function middleware(req: NextRequest) {
   const { nextUrl } = req;
   // Read at runtime; allow in production when explicitly enabled
   const authBypass = process.env.NODE_ENV !== "production" && process.env.AUTH_DEV_BYPASS === "true";
 
-  // Debug: log session status on root hits to verify middleware and auth state
-  if (nextUrl.pathname === "/") {
-    try {
-      const session = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
-      console.log("middleware match /", { path: nextUrl.pathname });
-      if (session) {
-        console.log("middleware session / present");
-      } else {
-        console.log("middleware session / null");
-      }
-    } catch (e) {
-      console.log("middleware session error /", (e as Error)?.message);
-    }
-  }
-
-  const isAuthRoute =
-    nextUrl.pathname === "/" ||
-    nextUrl.pathname.startsWith("/api/auth") ||
-    // Allow Twilio to reach our TwiML + call endpoints without auth & geofence
-    nextUrl.pathname.startsWith("/api/hotline/") ||
-    // Legacy activate-hotline route should be allowed (compat)
-    nextUrl.pathname === "/api/activate-hotline" ||
-    // Public signup routes (UI + APIs)
-    nextUrl.pathname === "/signup" ||
-    nextUrl.pathname.startsWith("/api/signup/") ||
-    nextUrl.pathname.startsWith("/api/twilio/") ||
-    nextUrl.pathname === "/blocked" ||
-    nextUrl.pathname === "/biometric" ||
-    nextUrl.pathname.startsWith("/_next");
-  if (isAuthRoute) return NextResponse.next();
+  // Public routes - allow through without auth
+  if (isPublicRoute(nextUrl.pathname)) return NextResponse.next();
 
   // In development, optionally bypass auth for select endpoints/pages to unblock testing
   if (authBypass) {
@@ -91,6 +80,21 @@ export default withAuth(async function middleware(req: NextRequest) {
   }
 
   return NextResponse.next();
+}, {
+  callbacks: {
+    // Return true to allow request through to middleware function
+    // Return false to redirect to signIn page
+    authorized: ({ req, token }) => {
+      const pathname = req.nextUrl.pathname;
+      // Public routes: always allow through
+      if (isPublicRoute(pathname)) return true;
+      // Protected routes: require token
+      return !!token;
+    },
+  },
+  pages: {
+    signIn: "/signup",
+  },
 });
 
 export const config = {
