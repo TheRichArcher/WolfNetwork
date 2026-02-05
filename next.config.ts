@@ -10,6 +10,8 @@ const withPWA = withPWAInit({
 
 const nextConfig: NextConfig = {
   /* config options here */
+  // Silence Turbopack/webpack config warning (PWA plugin adds webpack config)
+  turbopack: {},
   headers: async () => [
     {
       source: '/',
