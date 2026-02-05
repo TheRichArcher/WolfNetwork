@@ -81,7 +81,9 @@ export function getEnv(): Env {
   };
 
   const isProd = process.env.NODE_ENV === 'production';
-  if (isProd) {
+  // Skip validation during build phase (NEXT_PHASE is set during next build)
+  const isBuildPhase = process.env.NEXT_PHASE === 'phase-production-build';
+  if (isProd && !isBuildPhase) {
     if (env.AUTH_DEV_BYPASS === 'true') {
       throw new Error('AUTH_DEV_BYPASS cannot be true in production');
     }
