@@ -26,6 +26,7 @@ export default withAuth(async function middleware(req: NextRequest) {
   }
 
   const isAuthRoute =
+    nextUrl.pathname === "/" ||
     nextUrl.pathname.startsWith("/api/auth") ||
     // Allow Twilio to reach our TwiML + call endpoints without auth & geofence
     nextUrl.pathname.startsWith("/api/hotline/") ||
