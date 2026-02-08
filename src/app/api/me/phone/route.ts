@@ -5,6 +5,7 @@ import { encryptSecret } from '@/lib/crypto';
 import Airtable from 'airtable';
 import { getEnv } from '@/lib/env';
 import { logEvent } from '@/lib/log';
+import { sanitizeFormulaValue } from '@/lib/db';
 
 function isValidE164(input: string): boolean {
   return /^\+[1-9]\d{6,14}$/.test(input);
@@ -29,7 +30,7 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: 'Biometric required' }, { status: 403 });
     }
 
-    if (!checkRateLimit(`me:phone:${email}`, 6)) {
+    if (!(await checkRateLimit(`me:phone:${email}`, 6))) {
       logEvent({ event: 'me_phone_rate_limited', route: '/api/me/phone', email }, 'warn');
       return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
     }
@@ -49,7 +50,7 @@ export async function PUT(req: NextRequest) {
     const base = new Airtable({ apiKey: env.AIRTABLE_API_KEY }).base(env.AIRTABLE_BASE_ID);
     const users = base('users');
 
-    const records = await users.select({ filterByFormula: `{email} = '${email}'`, maxRecords: 1 }).firstPage();
+    const records = await users.select({ filterByFormula: `{email} = '${sanitizeFormulaValue(email)}'`, maxRecords: 1 }).firstPage();
     if (records.length === 0) {
       logEvent({ event: 'me_phone_user_not_found', route: '/api/me/phone', email }, 'warn');
       return NextResponse.json({ error: 'User not found' }, { status: 404 });

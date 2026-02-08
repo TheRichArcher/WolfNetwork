@@ -3,6 +3,14 @@ import Airtable, { type FieldSet } from 'airtable';
 import { getEnv } from './env';
 import { logEvent } from './log';
 
+/**
+ * Sanitize a value for use in Airtable filterByFormula to prevent formula injection.
+ * Escapes single quotes and backslashes.
+ */
+export function sanitizeFormulaValue(value: string): string {
+  return value.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+}
+
 export type UserRecord = {
   id: string; // UUID
   wolfId: string;
@@ -64,7 +72,7 @@ export async function findUserBySessionEmail(email: string): Promise<UserRecord 
     const base = getBase();
     const table = base(USERS_TABLE);
     const records = await table
-      .select({ filterByFormula: `{email} = '${email}'`, maxRecords: 1 })
+      .select({ filterByFormula: `{email} = '${sanitizeFormulaValue(email)}'`, maxRecords: 1 })
       .firstPage();
     if (records.length === 0) return null;
     const r = records[0];
@@ -99,7 +107,7 @@ export async function upsertUserBasic(params: {
     const email = (params.email || '').trim().toLowerCase();
     const results = email
       ? await table
-          .select({ filterByFormula: `{email} = '${email}'`, maxRecords: 1 })
+          .select({ filterByFormula: `{email} = '${sanitizeFormulaValue(email)}'`, maxRecords: 1 })
           .firstPage()
       : [];
     const fields: FieldSet = {};
@@ -162,7 +170,7 @@ export async function validateCompedCode(code: string): Promise<{ valid: boolean
     const value = code.trim();
     if (!value) return { valid: false };
     const records = await table
-      .select({ filterByFormula: `{code} = '${value}'`, maxRecords: 1 })
+      .select({ filterByFormula: `{code} = '${sanitizeFormulaValue(value)}'`, maxRecords: 1 })
       .firstPage();
     if (records.length === 0) return { valid: false };
     const r = records[0];
@@ -252,7 +260,7 @@ export async function updateIncident(id: string, fields: Partial<IncidentRecord>
     let recordId = id;
     if (!/^rec[a-zA-Z0-9]{14}$/i.test(id)) {
       const matches = await table
-        .select({ filterByFormula: `{id} = '${id}'`, maxRecords: 1 })
+        .select({ filterByFormula: `{id} = '${sanitizeFormulaValue(id)}'`, maxRecords: 1 })
         .firstPage();
       if (matches.length === 0) throw new Error(`Incident not found for custom id ${id}`);
       recordId = matches[0].id;
@@ -271,7 +279,7 @@ export async function findIncidentByCallSid(callSid: string): Promise<IncidentRe
     const base = getBase();
     const table = base('incidents');
     const records = await table
-      .select({ filterByFormula: `{callSid} = '${callSid}'`, maxRecords: 1 })
+      .select({ filterByFormula: `{callSid} = '${sanitizeFormulaValue(callSid)}'`, maxRecords: 1 })
       .firstPage();
     if (records.length === 0) return null;
     const r = records[0];
@@ -309,7 +317,7 @@ export async function findRecentInitiatedIncidentWithoutCallSid(sinceIso: string
     const table = base('incidents');
     const records = await table
       .select({
-        filterByFormula: `AND({status} = 'initiated', NOT({callSid}), IS_AFTER({createdAt}, '${sinceIso}'))`,
+        filterByFormula: `AND({status} = 'initiated', NOT({callSid}), IS_AFTER({createdAt}, '${sanitizeFormulaValue(sinceIso)}'))`,
         sort: [{ field: 'createdAt', direction: 'desc' }],
         maxRecords: 1,
       })
@@ -352,7 +360,7 @@ export async function findIncidentById(customIdOrRecId: string): Promise<Inciden
       record = await table.find(customIdOrRecId).catch(() => null);
     } else {
       const records = await table
-        .select({ filterByFormula: `{id} = '${customIdOrRecId}'`, maxRecords: 1 })
+        .select({ filterByFormula: `{id} = '${sanitizeFormulaValue(customIdOrRecId)}'`, maxRecords: 1 })
         .firstPage();
       record = records[0] || null;
     }
@@ -391,7 +399,7 @@ export async function findLastResolvedIncidentForWolfId(wolfId: string): Promise
     const table = base(INCIDENTS_TABLE);
     const records = await table
       .select({
-        filterByFormula: `AND({wolfId} = '${wolfId}', {status} = 'resolved')`,
+        filterByFormula: `AND({wolfId} = '${sanitizeFormulaValue(wolfId)}', {status} = 'resolved')`,
         sort: [{ field: 'resolvedAt', direction: 'desc' }],
         maxRecords: 1,
       })
@@ -430,7 +438,7 @@ export async function findLastResolvedIncidentForWolfId(wolfId: string): Promise
 export async function getUserSecurityFlagsByEmail(email: string): Promise<{ twoFA: boolean; profileVerified: boolean; hasPin: boolean }> {
   const base = getBase();
   const table = base('users');
-  const records = await table.select({ filterByFormula: `{email} = '${email}'`, maxRecords: 1 }).firstPage();
+  const records = await table.select({ filterByFormula: `{email} = '${sanitizeFormulaValue(email)}'`, maxRecords: 1 }).firstPage();
   if (records.length === 0) {
     return { twoFA: false, profileVerified: false, hasPin: false };
   }
@@ -458,7 +466,7 @@ export async function generateUniqueWolfId(params: { tier: 'Silver' | 'Gold' | '
     const suffix = crypto.randomUUID().slice(0, 4).toUpperCase();
     const candidate = `WOLF-${prefix}-${suffix}`;
     const exists = await users
-      .select({ filterByFormula: `{wolfId} = '${candidate}'`, maxRecords: 1 })
+      .select({ filterByFormula: `{wolfId} = '${sanitizeFormulaValue(candidate)}'`, maxRecords: 1 })
       .firstPage();
     if (exists.length === 0) return candidate;
   }
@@ -471,7 +479,7 @@ export async function auditCodeWithWolfId(params: { code: string; wolfId: string
   try {
     const base = getBase();
     const table = base(CODES_TABLE);
-    const records = await table.select({ filterByFormula: `{code} = '${params.code}'`, maxRecords: 1 }).firstPage();
+    const records = await table.select({ filterByFormula: `{code} = '${sanitizeFormulaValue(params.code)}'`, maxRecords: 1 }).firstPage();
     if (records.length === 0) return;
     const rec = records[0];
     await table.update([{ id: rec.id, fields: { wolfId: params.wolfId } }]);

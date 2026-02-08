@@ -6,7 +6,7 @@ function extractStatusCode(err: unknown): number | undefined {
   const maybe = (err as { statusCode?: unknown })?.statusCode;
   return typeof maybe === 'number' ? maybe : undefined;
 }
-import { findUserBySessionEmail, findIncidentById, updateIncident, type IncidentRecord } from './db';
+import { findUserBySessionEmail, findIncidentById, updateIncident, sanitizeFormulaValue, type IncidentRecord } from './db';
 import { notifyDiscordOnIncidentResolved } from './notify';
 // Use local getBase declared below to avoid circular import/export
 
@@ -19,7 +19,7 @@ export async function getAvailableOperator(
   
   // Try to find operator matching both region and specialty first
   if (crisisType && crisisType !== 'unknown') {
-    const specialtyFilter = `AND({region} = '${region}', {status} = 'available', {specialty} = '${crisisType}')`;
+    const specialtyFilter = `AND({region} = '${sanitizeFormulaValue(region)}', {status} = 'available', {specialty} = '${sanitizeFormulaValue(crisisType)}')`;
     try {
       const specialized = await table.select({
         filterByFormula: specialtyFilter,
@@ -40,7 +40,7 @@ export async function getAvailableOperator(
   
   // Fall back to any available operator in region
   const records = await table.select({
-    filterByFormula: `AND({region} = '${region}', {status} = 'available')`,
+    filterByFormula: `AND({region} = '${sanitizeFormulaValue(region)}', {status} = 'available')`,
     maxRecords: 1,
   }).firstPage();
   if (records.length === 0) return null;
@@ -67,7 +67,7 @@ export async function getActiveIncidentForEmail(email: string): Promise<Incident
     const table = base('incidents');
     const records = await table
       .select({
-        filterByFormula: `AND({wolfId} = '${user.wolfId}', OR({status} = 'initiated', {status} = 'active'))`,
+        filterByFormula: `AND({wolfId} = '${sanitizeFormulaValue(user.wolfId)}', OR({status} = 'initiated', {status} = 'active'))`,
         sort: [{ field: 'createdAt', direction: 'desc' }],
         maxRecords: 1,
       })
@@ -105,7 +105,7 @@ export async function getActiveIncidentForWolfId(wolfId: string): Promise<Incide
   const table = base('incidents');
   const records = await table
     .select({
-      filterByFormula: `AND({wolfId} = '${wolfId}', OR({status} = 'initiated', {status} = 'active'))`,
+      filterByFormula: `AND({wolfId} = '${sanitizeFormulaValue(wolfId)}', OR({status} = 'initiated', {status} = 'active'))`,
       sort: [{ field: 'createdAt', direction: 'desc' }],
       maxRecords: 1,
     })
