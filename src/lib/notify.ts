@@ -12,7 +12,8 @@ export type IncidentSummary = {
   crisisType?: 'legal' | 'medical' | 'security' | 'pr' | 'unknown';
 };
 
-const DEFAULT_WEBHOOK = 'https://discord.com/api/webhooks/1427704694200864800/A7bgIk2w2JQdhFYdLkMEU45xrH4AYLKjwk6DeEHEI7YGaR29VuMQWQew1Sfmh7G-sVDg';
+// Discord webhook URL must be set via DISCORD_WEBHOOK_URL environment variable
+const DEFAULT_WEBHOOK = '';
 
 function resolveBaseUrl(explicit?: string): string | undefined {
   const fromEnv = getEnv();

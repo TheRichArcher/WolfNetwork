@@ -1,10 +1,15 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { getToken } from 'next-auth/jwt';
 import { findIncidentById } from '@/lib/db';
 
 export const runtime = 'nodejs';
 
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
   try {
+    const token = await getToken({ req });
+    if (!token?.email) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     const url = new URL(req.url);
     const parts = url.pathname.split('/');
     const idx = parts.findIndex((p) => p === 'incident');

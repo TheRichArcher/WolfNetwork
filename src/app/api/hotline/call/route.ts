@@ -42,6 +42,12 @@ async function createTwilioCall(params: {
 
 export async function POST(req: NextRequest) {
   try {
+    const { getToken } = await import('next-auth/jwt');
+    const token = await getToken({ req });
+    if (!token?.email) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const env = getEnv();
     const json = (await req.json().catch(() => ({}))) as CreateCallBody;
 
