@@ -4,6 +4,16 @@ import { getOperatorNumber } from '@/lib/operator';
 import { getRedis } from '@/lib/redis';
 import { logEvent } from '@/lib/log';
 const memoryLocks = new Set<string>();
+const MAX_MEMORY_LOCKS = 1000;
+
+function addMemoryLock(key: string) {
+  if (memoryLocks.size >= MAX_MEMORY_LOCKS) {
+    const first = memoryLocks.values().next().value;
+    if (first) memoryLocks.delete(first);
+  }
+  memoryLocks.add(key);
+  setTimeout(() => memoryLocks.delete(key), 180000).unref?.();
+}
 async function readFormParams(req: NextRequest): Promise<URLSearchParams> {
   const contentType = req.headers.get('content-type') || '';
   if (contentType.includes('application/x-www-form-urlencoded')) {
@@ -45,8 +55,7 @@ export async function GET(req: NextRequest) {
           const xml = `<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Response>\n  <Pause length=\"1\"/>\n  <Hangup/>\n</Response>`;
           return new NextResponse(xml, { headers: { 'Content-Type': 'text/xml' } });
         }
-        memoryLocks.add(callSid);
-        setTimeout(() => memoryLocks.delete(callSid), 180000).unref?.();
+        addMemoryLock(callSid);
       }
     }
   } catch {}
@@ -91,8 +100,7 @@ export async function POST(req: NextRequest) {
           const xml = `<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Response>\n  <Pause length=\"1\"/>\n  <Hangup/>\n</Response>`;
           return new NextResponse(xml, { headers: { 'Content-Type': 'text/xml' } });
         }
-        memoryLocks.add(callSid);
-        setTimeout(() => memoryLocks.delete(callSid), 180000).unref?.();
+        addMemoryLock(callSid);
       }
     }
   } catch {}

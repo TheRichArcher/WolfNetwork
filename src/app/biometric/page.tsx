@@ -17,9 +17,9 @@ function BiometricContent() {
 
   const confirm = useCallback(async () => {
     try {
-      // Placeholder: In future, integrate real WebAuthn. For now, set a short-lived cookie.
-      const maxAge = 60 * 60; // 1 hour
-      document.cookie = `biometric_ok=1; Max-Age=${maxAge}; Path=/; SameSite=Lax`;
+      // Set cookie via server-side API to ensure HttpOnly + Secure flags
+      const res = await fetch('/api/biometric/confirm', { method: 'POST' });
+      if (!res.ok) throw new Error('Biometric confirmation failed');
       router.replace(next);
     } catch {
       setError('Biometric confirmation failed.');
