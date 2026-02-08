@@ -1,12 +1,16 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useSession } from 'next-auth/react';
 
 const RelayStatus = () => {
+  const { status: authStatus } = useSession();
   const [region, setRegion] = useState<string>('');
   const [latency, setLatency] = useState<number | null>(null);
   const [healthy, setHealthy] = useState<boolean>(true);
+
   useEffect(() => {
+    if (authStatus !== 'authenticated') return;
     let cancelled = false;
     const ping = async () => {
       const started = performance.now();
@@ -30,7 +34,11 @@ const RelayStatus = () => {
       cancelled = true;
       window.clearInterval(id);
     };
-  }, []);
+  }, [authStatus]);
+
+  // Don't show relay status for unauthenticated users
+  if (authStatus !== 'authenticated') return null;
+
   return (
     <div className="px-4 py-1 text-center text-[10px] text-gray-400 border-t border-border">
       {healthy ? 'Secure Relay Active' : 'Secure Relay Degraded'} — {region || '—'} Node — {latency != null ? `${latency}ms latency` : '…'}
@@ -39,5 +47,3 @@ const RelayStatus = () => {
 };
 
 export default RelayStatus;
-
-

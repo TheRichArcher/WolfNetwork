@@ -8,14 +8,12 @@ export async function POST(req: NextRequest) {
     const url = req.nextUrl;
     const xSig = req.headers.get('x-twilio-signature');
     const contentType = req.headers.get('content-type') || '';
-    const isProd = process.env.NODE_ENV === 'production' || process.env.VERCEL_ENV === 'production';
-
     // Build base URL used for signature payload
     const fullUrl = `${process.env.PUBLIC_BASE_URL || `${url.protocol}//${url.host}`}${url.pathname}`;
 
-    // Early fail-closed in production when signature header is missing
-    if (isProd && !xSig) {
-      console.log('[twilio] session-updated gate', { isProd: true, hasSig: false, fullUrl });
+    // Fail-closed when signature header is missing
+    if (!xSig) {
+      console.log('[twilio] session-updated gate', { hasSig: false, fullUrl });
       return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
     }
     let params: URLSearchParams | null = null;
@@ -31,8 +29,8 @@ export async function POST(req: NextRequest) {
 
     const sigOk = verifyTwilioSignature({ fullUrl, xSignature: xSig, formParams: params });
     const tokenPresent = Boolean(getEnv().TWILIO_AUTH_TOKEN);
-    console.log('[twilio] session-updated verify', { isProd, hasSig: Boolean(xSig), tokenPresent, verified: sigOk });
-    if (isProd && !sigOk) {
+    console.log('[twilio] session-updated verify', { hasSig: Boolean(xSig), tokenPresent, verified: sigOk });
+    if (!sigOk) {
       return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
     }
 

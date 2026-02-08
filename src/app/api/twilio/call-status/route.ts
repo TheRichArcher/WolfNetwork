@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
     const fullUrl = `${base}${url.pathname}${url.search || ''}`;
     // Enforce signature verification in production; in non-production, allow bypass for local/dev testing
     const sigOk = verifyTwilioSignature({ fullUrl, xSignature: xSig, formParams: params });
-    if (process.env.NODE_ENV === 'production' && !sigOk) {
+    if (!sigOk) {
       logEvent({ event: 'twilio_sig_invalid', route: '/api/twilio/call-status', computedUrl: fullUrl }, 'warn');
       return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
     }

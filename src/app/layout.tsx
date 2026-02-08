@@ -3,6 +3,7 @@ import { Montserrat } from "next/font/google";
 import "./globals.css";
 import AnalyticsClient from "@/components/AnalyticsClient";
 import SessionProviderClient from "@/components/SessionProviderClient";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 const montserrat = Montserrat({
   subsets: ["latin"],
@@ -23,10 +24,6 @@ export const viewport: Viewport = {
   themeColor: "#1A1A1A",
 };
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
-export const fetchCache = 'force-no-store';
-
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -35,10 +32,12 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${montserrat.variable} font-sans antialiased bg-background text-main-text`}>
-        <SessionProviderClient>
-          <AnalyticsClient />
-          {children}
-        </SessionProviderClient>
+        <ErrorBoundary>
+          <SessionProviderClient>
+            <AnalyticsClient />
+            {children}
+          </SessionProviderClient>
+        </ErrorBoundary>
       </body>
     </html>
   );

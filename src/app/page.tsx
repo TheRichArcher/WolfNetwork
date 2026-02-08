@@ -10,8 +10,6 @@ import CardCarousel from '@/components/CardCarousel';
 import HotlineButton from '@/components/HotlineButton';
 import posthog from 'posthog-js';
 
-export const dynamic = "force-dynamic";
-
 export default function Home() {
   const { status } = useSession();
   const router = useRouter();
@@ -117,24 +115,6 @@ export default function Home() {
 
   // Removed post-auth phone submission; user phones are not collected or stored by design
 
-  // load identity and region
-  useEffect(() => {
-    let cancelled = false;
-    fetch('/api/me')
-      .then(async (r) => {
-        if (!r.ok) return;
-        const j = await r.json();
-        if (!cancelled) {
-          setWolfId(j.wolfId || '');
-          // region is unused; skip storing for now
-        }
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
   // Load cached incidentId to enable fallback polling when not authenticated
   useEffect(() => {
     try {
@@ -142,7 +122,6 @@ export default function Home() {
       const cachedId = localStorage.getItem('lastIncidentId');
       const savedAtRaw = localStorage.getItem('lastIncidentSavedAt');
       const savedAt = savedAtRaw ? parseInt(savedAtRaw, 10) : NaN;
-      // Keep fallback very short-lived to avoid false positives on fresh page loads
       const fresh = !isNaN(savedAt) && Date.now() - savedAt < 5 * 60 * 1000;
       if (cachedId && fresh) {
         setFallbackIncidentId(cachedId);
@@ -153,43 +132,60 @@ export default function Home() {
     } catch {}
   }, []);
 
-  // load team
+  // Load identity, team, presence, last incident, and security status in parallel
   useEffect(() => {
     let cancelled = false;
-    fetch('/api/me/team')
-      .then(async (r) => (r.ok ? r.json() : null))
-      .then((j) => {
-        if (!j || cancelled) return;
-        const list = j.team || [];
+    Promise.allSettled([
+      fetch('/api/me').then(r => r.ok ? r.json() : null),
+      fetch('/api/me/team').then(r => r.ok ? r.json() : null),
+      fetch('/api/partners/presence').then(r => r.ok ? r.json() : null),
+      fetch('/api/me/last-incident').then(r => r.ok ? r.json() : null),
+      fetch('/api/me/security-status').then(r => r.ok ? r.json() : null),
+    ]).then(([meResult, teamResult, presenceResult, lastIncResult, secResult]) => {
+      if (cancelled) return;
+      if (meResult.status === 'fulfilled' && meResult.value) {
+        setWolfId(meResult.value.wolfId || '');
+      }
+      if (teamResult.status === 'fulfilled' && teamResult.value) {
+        const list = teamResult.value.team || [];
         setTeam(list);
         const anyOffline = list.some((m: { status: string }) => m.status === 'Offline');
         setPackStatus(anyOffline ? 'Pack on Standby' : 'Pack Ready');
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
+      }
+      if (presenceResult.status === 'fulfilled' && presenceResult.value) {
+        setPartnersPresence((presenceResult.value.partners || []) as Array<{ category: string; name: string; status: 'Active' | 'Rotating' | 'Offline' }>);
+      }
+      if (lastIncResult.status === 'fulfilled' && lastIncResult.value) {
+        setLastActivation(lastIncResult.value);
+      }
+      if (secResult.status === 'fulfilled' && secResult.value) {
+        const j = secResult.value;
+        setReadiness({
+          twoFA: Boolean(j.twoFA),
+          profileVerified: Boolean(j.profileVerified),
+          hasPin: Boolean(j.securePIN),
+          percent: typeof j.percent === 'number' ? j.percent : 0,
+        });
+      }
+    });
+    return () => { cancelled = true; };
   }, []);
 
-  // presence polling every 60s
+  // presence polling every 60s (after initial load)
   useEffect(() => {
     let cancelled = false;
-    let timer: number | null = null;
-    const load = () => {
+    const timer = window.setInterval(() => {
       fetch('/api/partners/presence')
         .then(async (r) => (r.ok ? r.json() : null))
         .then((j) => {
           if (!j || cancelled) return;
-          const partners = (j.partners || []) as Array<{ category: string; name: string; status: 'Active' | 'Rotating' | 'Offline' }>;
-          setPartnersPresence(partners);
+          setPartnersPresence((j.partners || []) as Array<{ category: string; name: string; status: 'Active' | 'Rotating' | 'Offline' }>);
         })
         .catch(() => {});
-    };
-    load();
-    timer = window.setInterval(load, 60000);
+    }, 60000);
     return () => {
       cancelled = true;
-      if (timer) window.clearInterval(timer);
+      window.clearInterval(timer);
     };
   }, []);
 
@@ -272,48 +268,16 @@ export default function Home() {
         .catch(() => {});
     };
     load();
-    timer = window.setInterval(load, 5000);
+    // Only poll every 5s if there's an active session or we're activating; otherwise poll every 30s
+    const hasActiveContext = isActivating || !!fallbackIncidentId;
+    const interval = hasActiveContext ? 5000 : 30000;
+    timer = window.setInterval(load, interval);
     return () => {
       cancelled = true;
       if (timer) window.clearInterval(timer);
       if (endBannerTimerRef.current) window.clearTimeout(endBannerTimerRef.current);
     };
   }, [hotlineStatus, isActivating, fallbackIncidentId]);
-
-  // load last incident summary
-  useEffect(() => {
-    let cancelled = false;
-    fetch('/api/me/last-incident')
-      .then(async (r) => (r.ok ? r.json() : null))
-      .then((j) => {
-        if (!j || cancelled) return;
-        setLastActivation(j);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  // load readiness from server
-  useEffect(() => {
-    let cancelled = false;
-    fetch('/api/me/security-status')
-      .then(async (r) => (r.ok ? r.json() : null))
-      .then((j) => {
-        if (!j || cancelled) return;
-        setReadiness({
-          twoFA: Boolean(j.twoFA),
-          profileVerified: Boolean(j.profileVerified),
-          hasPin: Boolean(j.securePIN),
-          percent: typeof j.percent === 'number' ? j.percent : 0,
-        });
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   // fake relay latency by pinging a lightweight endpoint (or measure /api/me)
   // Removed unused latency probe effect
