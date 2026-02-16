@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
     }
 
     const rateKey = `signup:comped:${rawEmail}`;
-    if (!checkRateLimit(rateKey, 6)) {
+    if (!(await checkRateLimit(rateKey, 6))) {
       return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
     }
 

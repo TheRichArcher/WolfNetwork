@@ -1,12 +1,17 @@
 'use client';
 
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import RelayStatus from '@/components/RelayStatus';
 
 const BottomNav = () => {
   const { status } = useSession();
+  const pathname = usePathname();
   const isAuthed = status === 'authenticated';
+
+  // Hide entire bottom nav on signup page
+  if (pathname === '/signup') return null;
 
   return (
     <footer role="contentinfo" aria-label="Bottom navigation" className="fixed bottom-0 left-0 right-0 bg-background z-10">
